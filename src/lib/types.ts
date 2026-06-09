@@ -1,16 +1,20 @@
+export const UNITS = ['g', 'kg', 'ml', 'L', 'pcs', 'cups'] as const;
+export type Unit = typeof UNITS[number];
+
 export interface PantryItem {
   id: string;
   name: string;
   quantity: number;
+  unit: Unit;
   addedAt: number;
 }
 
 export interface RecipeRow {
   id: string;
-  title: string;
+  recipe_name: string;
   ingredients: string[];
-  instructions: string;
-  imageStub?: string;
+  instructions: string[];
+  cooking_time: number;
 }
 
 export interface MatchResult {
@@ -32,12 +36,24 @@ export interface RecipeResponse {
   tips: string;
 }
 
+/** Schema returned by POST /api/generate-recipe */
+export interface GeneratedRecipe {
+  recipeName: string;
+  cookingTime: string;
+  whyItMatchesCraving: string;
+  /** Keys are missing ingredient names; values are suggested substitutes */
+  substitutedIngredients: Record<string, string>;
+  instructions: string[];
+}
+
 export interface MealConfig {
   prepTime: number;
   dietary: {
-    vegetarian: boolean;
-    vegan: boolean;
-    glutenFree: boolean;
+    vegetarian:  boolean;
+    vegan:       boolean;
+    glutenFree:  boolean;
+    highProtein: boolean;
+    lowCarb:     boolean;
   };
   craving: string;
 }

@@ -1,11 +1,27 @@
-import type { PantryItem } from './types';
+import type { PantryItem, Unit } from './types';
 
 const STORAGE_KEY = 'pantry_items';
+
+export const UNIT_STEP: Record<string, number> = {
+  g:    50,
+  kg:   0.1,
+  ml:   50,
+  L:    0.25,
+  pcs:  1,
+  cups: 0.25,
+};
+
+export function getStep(unit: string): number {
+  return UNIT_STEP[unit] ?? 1;
+}
 
 export function getPantry(): PantryItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as PantryItem[]) : [];
+    if (!raw) return [];
+    const items = JSON.parse(raw) as PantryItem[];
+    // Migrate older items that predate the unit field
+    return items.map(item => ({ ...item, unit: (item.unit ?? 'pcs') as Unit }));
   } catch {
     return [];
   }
@@ -15,13 +31,19 @@ export function setPantry(items: PantryItem[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-export function addItem(name: string): PantryItem[] {
+export function addItem(name: string, quantity = 1, unit: Unit = 'pcs'): PantryItem[] {
   const normalized = name.trim().toLowerCase();
   const current = getPantry();
   if (!normalized || current.some((i) => i.name === normalized)) return current;
   const next: PantryItem[] = [
     ...current,
-    { id: crypto.randomUUID(), name: normalized, quantity: 1, addedAt: Date.now() },
+    {
+      id:       crypto.randomUUID(),
+      name:     normalized,
+      quantity: parseFloat(quantity.toFixed(3)),
+      unit,
+      addedAt:  Date.now(),
+    },
   ];
   setPantry(next);
   return next;
@@ -33,10 +55,37 @@ export function removeItem(id: string): PantryItem[] {
   return next;
 }
 
-export function adjustQuantity(id: string, delta: number): PantryItem[] {
-  const next = getPantry().map((i) =>
-    i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i
-  );
+/**
+ * Increment or decrement quantity by the unit-appropriate step size.
+ * Direction: +1 to increase, -1 to decrease.
+ * Floors at one step (can't go below minimum via stepper; use removeItem to delete).
+ */
+export function adjustQuantity(id: string, direction: 1 | -1): PantryItem[] {
+  const next = getPantry().map(item => {
+    if (item.id !== id) return item;
+    const step   = getStep(item.unit);
+    const newQty = parseFloat((item.quantity + direction * step).toFixed(3));
+    return { ...item, quantity: Math.max(step, newQty) };
+  });
+  setPantry(next);
+  return next;
+}
+
+/**
+ * Decrement all listed item IDs by one step for their unit.
+ * Items that reach 0 are removed (they've been fully used up).
+ * Called when the user clicks "I Cooked This!".
+ */
+export function decrementItems(ids: string[]): PantryItem[] {
+  const idSet = new Set(ids);
+  const next = getPantry()
+    .map(item => {
+      if (!idSet.has(item.id)) return item;
+      const step   = getStep(item.unit);
+      const newQty = parseFloat((item.quantity - step).toFixed(3));
+      return { ...item, quantity: Math.max(0, newQty) };
+    })
+    .filter(item => item.quantity > 0);
   setPantry(next);
   return next;
 }
