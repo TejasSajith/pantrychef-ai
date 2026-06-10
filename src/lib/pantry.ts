@@ -90,6 +90,35 @@ export function decrementItems(ids: string[]): PantryItem[] {
   return next;
 }
 
+/**
+ * Deduct specific amounts from pantry items using the AI's
+ * exactPantryQuantitiesToSubtract map (ingredient name → amount).
+ * Math.round eliminates floating-point artifacts (e.g. 249.99999… → 250).
+ * Items whose quantity reaches exactly 0 are removed from the pantry.
+ */
+export function deductByName(amounts: Record<string, number>): PantryItem[] {
+  const lowerAmounts: Record<string, number> = {};
+  for (const [k, v] of Object.entries(amounts)) {
+    lowerAmounts[k.toLowerCase().trim()] = v;
+  }
+
+  const next = getPantry()
+    .map(item => {
+      // Try exact match then substring match in both directions
+      const matchedKey = Object.keys(lowerAmounts).find(
+        k => item.name === k || item.name.includes(k) || k.includes(item.name),
+      );
+      if (!matchedKey) return item;
+      const used   = lowerAmounts[matchedKey];
+      const newQty = Math.max(0, parseFloat((item.quantity - used).toFixed(3)));
+      return { ...item, quantity: newQty };
+    })
+    .filter(item => item.quantity > 0);
+
+  setPantry(next);
+  return next;
+}
+
 export function clearPantry(): void {
   localStorage.removeItem(STORAGE_KEY);
 }

@@ -36,14 +36,21 @@ export interface RecipeResponse {
   tips: string;
 }
 
-/** Schema returned by POST /api/generate-recipe */
+/** Schema for a single AI-generated recipe */
 export interface GeneratedRecipe {
-  recipeName: string;
-  cookingTime: string;
-  whyItMatchesCraving: string;
+  recipeName:                      string;
+  cookingTime:                     string;
+  whyItMatchesCraving:             string;
   /** Keys are missing ingredient names; values are suggested substitutes */
-  substitutedIngredients: Record<string, string>;
-  instructions: string[];
+  substitutedIngredients:          Record<string, string>;
+  instructions:                    string[];
+  /** Keys are pantry ingredient names; values are amounts to deduct (in pantry units) */
+  exactPantryQuantitiesToSubtract: Record<string, number>;
+}
+
+/** Top-level schema returned by POST /api/generate-recipe */
+export interface GeneratedRecipeResponse {
+  recipes: GeneratedRecipe[];
 }
 
 export interface MealConfig {
