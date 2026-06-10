@@ -39,5 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-data/
-recipes.csv
+# dataset source files — large, not committed
+public/data/*.csv
+public/data/*.pkl
