@@ -68,6 +68,7 @@ interface RequestBody {
   dietaryRestrictions: string[];
   servingsCount:       number;
   preferredCuisine:    string;
+  language?:           string;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -129,8 +130,28 @@ const SYSTEM_INSTRUCTION =
   'Mexican → introduce chilli, lime, cumin, smoked paprika, coriander leaf, and bold umami layers; ' +
   'East Asian → use soy sauce, sesame oil, ginger, garlic, rice vinegar, or five-spice profiles; ' +
   'Mediterranean → olive oil, lemon, capers, sun-dried tomatoes, fresh herbs, and light grain or legume bases. ' +
+  'REGIONAL INDIAN CUISINE GUIDANCE: When preferredCuisine is "north-indian", emphasise garam masala, cream, ' +
+  'tomatoes, onions, ghee, and rich Mughal-influenced gravies. ' +
+  'When preferredCuisine is "south-indian", emphasise mustard seeds, curry leaves, coconut oil, ' +
+  'tamarind, urad dal, and rice-based preparations. ' +
+  'When preferredCuisine is "mughlai", emphasise slow-cooked gravies, whole spices (cardamom, cloves, bay leaf), ' +
+  'saffron, cream, and nut-based sauces. ' +
+  'When preferredCuisine is "kerala", emphasise coconut oil, coconut milk, curry leaves, mustard seeds, ' +
+  'black pepper, and coastal spice profiles typical of Kerala cuisine. ' +
   'You must still strictly adhere to the available pantry inventory and all portion limitations. ' +
   'Adapt the flavour profile only — do not invent ingredients that are not in the pantry. ' +
+
+  // ── LOCALIZATION LAW ──────────────────────────────────────────────────
+  'CRITICAL LOCALIZATION LAW: Check the "language" parameter in the user prompt. ' +
+  'If language is "hi" (Hindi), you MUST translate your complete recipe output — ' +
+  'the recipeName, whyItMatchesCraving, all substitutedIngredients keys and values, ' +
+  'and all instructions strings — entirely into Hindi using Devanagari script. ' +
+  'If language is "ml" (Malayalam), you MUST translate those same fields entirely into ' +
+  'Malayalam using Malayalam script. ' +
+  'If language is "en" or absent, respond in English as normal. ' +
+  'The JSON structure and all key names (recipeName, cookingTime, etc.) must remain in English ' +
+  'regardless of language — only the string VALUES of the listed fields are translated. ' +
+  'cookingTime and exactPantryQuantitiesToSubtract values remain in English/numerals always. ' +
 
   // ── OUTPUT FORMAT ─────────────────────────────────────────────────────
   'You respond with ONLY a raw JSON object — no markdown fences, no prose, ' +
@@ -148,6 +169,7 @@ function buildPrompt(
   matches:          MatchResult[],
   servingsCount:    number,
   preferredCuisine: string,
+  language:         string,
 ): string {
   const dietaryLine = dietary.length ? dietary.join(', ') : 'none';
   const cravingLine = craving || 'a satisfying, well-rounded meal';
@@ -244,6 +266,13 @@ ${specialGuidance ? `\n### Mandatory dietary rules\n${specialGuidance}` : ''}
 ${preferredCuisine === 'any'
   ? 'Any — no specific regional style required.'
   : `${preferredCuisine.toUpperCase()} — adapt ALL 3 recipes to reflect this cuisine's flavor profile (spices, aromatics, cooking style). Pantry inventory boundaries still apply.`}
+
+## Language
+${language === 'hi'
+  ? 'hi — Hindi. MANDATORY: Translate recipeName, whyItMatchesCraving, substitutedIngredients keys/values, and all instructions into Hindi (Devanagari script). JSON keys and cookingTime stay in English.'
+  : language === 'ml'
+  ? 'ml — Malayalam. MANDATORY: Translate recipeName, whyItMatchesCraving, substitutedIngredients keys/values, and all instructions into Malayalam (Malayalam script). JSON keys and cookingTime stay in English.'
+  : 'en — English. Respond in English as normal.'}
 
 ## 6 Dataset Candidates (ranked by pantry overlap — choose 3 whose structural bases are present)
 Any candidate marked "⚠ STRUCTURAL BASE MISSING" must be SKIPPED — do not suggest it.
@@ -520,6 +549,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ? body.preferredCuisine.trim().toLowerCase()
     : 'any';
 
+  const language = typeof body.language === 'string' && ['en', 'hi', 'ml'].includes(body.language)
+    ? body.language
+    : 'en';
+
   const pantryIngredients = pantryItems.map(i => i.name);
 
   /* ── 2. Local matcher — top 6 candidates (AI picks best 3) ── */
@@ -540,7 +573,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   /* ── 4. Build prompt ────────────────────────────────────── */
   const userPrompt = buildPrompt(
-    pantryItems, maxTime, craving, dietaryRestrictions, topMatches, servingsCount, preferredCuisine,
+    pantryItems, maxTime, craving, dietaryRestrictions, topMatches, servingsCount, preferredCuisine, language,
   );
 
   /* ── 5. Call Groq with 20-second timeout ────────────────── */

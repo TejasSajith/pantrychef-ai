@@ -8,17 +8,18 @@ import {
 import RecipeDisplay from '@/components/RecipeDisplay';
 import type { PantryItem, MealConfig, GeneratedRecipe, GeneratedRecipeResponse } from '@/lib/types';
 import { UNITS } from '@/lib/types';
+import { translations, type Language } from '@/lib/translations';
 
-type CuisineOption = 'any' | 'indian' | 'italian' | 'mexican' | 'east-asian' | 'mediterranean';
-
-const CUISINE_OPTIONS: { value: CuisineOption; label: string; emoji: string }[] = [
-  { value: 'any',           label: 'Any',           emoji: '🌍' },
-  { value: 'indian',        label: 'Indian',         emoji: '🍛' },
-  { value: 'italian',       label: 'Italian',        emoji: '🍝' },
-  { value: 'mexican',       label: 'Mexican',        emoji: '🌮' },
-  { value: 'east-asian',    label: 'East Asian',     emoji: '🥢' },
-  { value: 'mediterranean', label: 'Mediterranean',  emoji: '🫒' },
-];
+type CuisineOption =
+  | 'any'
+  | 'north-indian'
+  | 'south-indian'
+  | 'mughlai'
+  | 'kerala'
+  | 'italian'
+  | 'mexican'
+  | 'east-asian'
+  | 'mediterranean';
 
 const DIETARY_LABEL_MAP: Record<keyof MealConfig['dietary'], string> = {
   vegetarian:  'vegetarian',
@@ -28,17 +29,16 @@ const DIETARY_LABEL_MAP: Record<keyof MealConfig['dietary'], string> = {
   lowCarb:     'low-carb',
 };
 
-const DIETARY_OPTIONS: {
+const DIETARY_KEYS: {
   key:    keyof MealConfig['dietary'];
-  label:  string;
   emoji:  string;
   accent: 'emerald' | 'blue' | 'orange';
 }[] = [
-  { key: 'vegetarian',  label: 'Vegetarian',  emoji: '🥗', accent: 'emerald' },
-  { key: 'vegan',       label: 'Vegan',        emoji: '🌱', accent: 'emerald' },
-  { key: 'glutenFree',  label: 'Gluten-Free',  emoji: '🌾', accent: 'emerald' },
-  { key: 'highProtein', label: 'High-Protein', emoji: '💪', accent: 'blue'    },
-  { key: 'lowCarb',     label: 'Low-Carb',     emoji: '🥩', accent: 'orange'  },
+  { key: 'vegetarian',  emoji: '🥗', accent: 'emerald' },
+  { key: 'vegan',       emoji: '🌱', accent: 'emerald' },
+  { key: 'glutenFree',  emoji: '🌾', accent: 'emerald' },
+  { key: 'highProtein', emoji: '💪', accent: 'blue'    },
+  { key: 'lowCarb',     emoji: '🥩', accent: 'orange'  },
 ];
 
 function formatQty(quantity: number, unit: string): string {
@@ -46,7 +46,6 @@ function formatQty(quantity: number, unit: string): string {
   return `${n} ${unit}`;
 }
 
-/** Guard: response must be a { recipes: [...] } wrapper with at least one valid recipe. */
 function isRecipeResponse(data: unknown): data is GeneratedRecipeResponse {
   if (!data || typeof data !== 'object') return false;
   const d = data as Record<string, unknown>;
@@ -62,14 +61,21 @@ function isRecipeResponse(data: unknown): data is GeneratedRecipeResponse {
   });
 }
 
+const LANG_LABELS: Record<Language, string> = {
+  en: 'English',
+  hi: 'हिंदी',
+  ml: 'മലയാളം',
+};
+
 export default function Home() {
-  const [pantry,        setPantryState] = useState<PantryItem[]>([]);
-  const [input,         setInput]       = useState('');
-  const [inputQty,      setInputQty]    = useState(1);
-  const [inputUnit,     setInputUnit]   = useState<typeof UNITS[number]>('pcs');
-  const [servingsCount, setServings]    = useState(1);
-  const [cuisine,       setCuisine]     = useState<CuisineOption>('any');
-  const [config,        setConfig]      = useState<MealConfig>({
+  const [pantry,          setPantryState]    = useState<PantryItem[]>([]);
+  const [input,           setInput]          = useState('');
+  const [inputQty,        setInputQty]       = useState(1);
+  const [inputUnit,       setInputUnit]      = useState<typeof UNITS[number]>('pcs');
+  const [servingsCount,   setServings]       = useState(1);
+  const [cuisine,         setCuisine]        = useState<CuisineOption>('any');
+  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
+  const [config,          setConfig]         = useState<MealConfig>({
     prepTime: 30,
     dietary:  { vegetarian: false, vegan: false, glutenFree: false, highProtein: false, lowCarb: false },
     craving:  '',
@@ -84,6 +90,20 @@ export default function Home() {
     setMounted(true);
   }, []);
 
+  const t = translations[currentLanguage];
+
+  const CUISINE_OPTIONS: { value: CuisineOption; label: string; emoji: string }[] = [
+    { value: 'any',           label: t.cuisineAny,           emoji: '🌍' },
+    { value: 'north-indian',  label: t.cuisineNorthIndian,   emoji: '🍛' },
+    { value: 'south-indian',  label: t.cuisineSouthIndian,   emoji: '🥘' },
+    { value: 'mughlai',       label: t.cuisineMughlai,       emoji: '🫕' },
+    { value: 'kerala',        label: t.cuisineKerala,        emoji: '🥥' },
+    { value: 'italian',       label: t.cuisineItalian,       emoji: '🍝' },
+    { value: 'mexican',       label: t.cuisineMexican,       emoji: '🌮' },
+    { value: 'east-asian',    label: t.cuisineEastAsian,     emoji: '🥢' },
+    { value: 'mediterranean', label: t.cuisineMediterranean, emoji: '🫒' },
+  ];
+
   /* ── Pantry mutations ─────────────────────────── */
   const handleAdd = useCallback(() => {
     const trimmed = input.trim();
@@ -93,9 +113,9 @@ export default function Home() {
     setInputQty(1);
   }, [input, inputQty, inputUnit]);
 
-  const handleRemove   = useCallback((id: string)        => setPantryState(removeItem(id)),          []);
-  const handleAdjust   = useCallback((id: string, d: 1 | -1) => setPantryState(adjustQuantity(id, d)), []);
-  const handleClear    = useCallback(() => { clearPantry(); setPantryState([]); setRecipes(null); setFetchError(null); }, []);
+  const handleRemove = useCallback((id: string)            => setPantryState(removeItem(id)),          []);
+  const handleAdjust = useCallback((id: string, d: 1 | -1) => setPantryState(adjustQuantity(id, d)),   []);
+  const handleClear  = useCallback(() => { clearPantry(); setPantryState([]); setRecipes(null); setFetchError(null); }, []);
 
   /* ── Config mutations ─────────────────────────── */
   const setPrepTime   = (v: number) => setConfig(c => ({ ...c, prepTime: v }));
@@ -125,6 +145,7 @@ export default function Home() {
           dietaryRestrictions: dietaryList,
           servingsCount,
           preferredCuisine:    cuisine,
+          language:            currentLanguage,
         }),
       });
 
@@ -157,7 +178,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [pantry, config, loading, servingsCount, cuisine]);
+  }, [pantry, config, loading, servingsCount, cuisine, currentLanguage]);
 
   /* ── I Cooked This! ───────────────────────────── */
   const handleCookedThis = useCallback((recipe: GeneratedRecipe) => {
@@ -165,7 +186,6 @@ export default function Home() {
     if (Object.keys(amounts).length > 0) {
       setPantryState(deductByName(amounts));
     } else {
-      // Fallback: decrement all items by one step when AI didn't provide exact amounts
       setPantryState(decrementItems(pantry.map(i => i.id)));
     }
     setRecipes(null);
@@ -185,10 +205,30 @@ export default function Home() {
             <h1 className="text-xl font-bold leading-none tracking-tight text-stone-900">
               PantryChef <span className="text-emerald-600">AI</span>
             </h1>
-            <p className="mt-0.5 text-xs text-stone-500">Turn what you have into what you love</p>
+            <p className="mt-0.5 text-xs text-stone-500">{t.appSubtitle}</p>
           </div>
-          <span className="ml-auto rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-            Swecha AI Hackathon
+
+          {/* Language selector */}
+          <div className="ml-auto flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 p-0.5">
+            {(Object.keys(LANG_LABELS) as Language[]).map(lang => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setCurrentLanguage(lang)}
+                className={[
+                  'rounded-full px-3 py-1 text-xs font-semibold transition-all',
+                  currentLanguage === lang
+                    ? 'bg-white text-stone-900 shadow-sm ring-1 ring-stone-200'
+                    : 'text-stone-500 hover:text-stone-700',
+                ].join(' ')}
+              >
+                {LANG_LABELS[lang]}
+              </button>
+            ))}
+          </div>
+
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+            {t.hackathonBadge}
           </span>
         </div>
       </header>
@@ -203,10 +243,10 @@ export default function Home() {
             <div className="flex items-center gap-2.5">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />
               <h2 className="text-sm font-semibold uppercase tracking-widest text-stone-500">
-                Digital Pantry
+                {t.digitalPantry}
               </h2>
               <span className="ml-auto rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-500">
-                {pantry.length} {pantry.length === 1 ? 'item' : 'items'}
+                {t.itemCount(pantry.length)}
               </span>
             </div>
 
@@ -217,7 +257,7 @@ export default function Home() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                placeholder="e.g. chicken, garlic, flour…"
+                placeholder={t.ingredientPlaceholder}
                 className="w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
               <div className="flex gap-2">
@@ -246,7 +286,7 @@ export default function Home() {
                   disabled={!input.trim()}
                   className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Add
+                  {t.add}
                 </button>
               </div>
             </div>
@@ -256,8 +296,8 @@ export default function Home() {
               {pantry.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 py-24 text-center">
                   <span className="text-5xl">🫙</span>
-                  <p className="mt-1 text-sm font-medium text-stone-500">Your pantry is empty</p>
-                  <p className="text-xs text-stone-400">Add ingredients above to start discovering recipes</p>
+                  <p className="mt-1 text-sm font-medium text-stone-500">{t.pantryEmpty}</p>
+                  <p className="text-xs text-stone-400">{t.pantryEmptySub}</p>
                 </div>
               ) : (
                 <ul className="divide-y divide-stone-100">
@@ -289,7 +329,7 @@ export default function Home() {
 
             {pantry.length > 0 && (
               <button onClick={handleClear} className="self-start text-xs text-stone-400 transition hover:text-red-400">
-                Clear all
+                {t.clearAll}
               </button>
             )}
           </section>
@@ -301,7 +341,7 @@ export default function Home() {
             <div className="flex items-center gap-2.5">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100" />
               <h2 className="text-sm font-semibold uppercase tracking-widest text-stone-500">
-                Meal Customizer
+                {t.mealCustomizer}
               </h2>
             </div>
 
@@ -312,7 +352,7 @@ export default function Home() {
                 <div>
                   <div className="mb-4 flex items-center justify-between">
                     <label htmlFor="prep-time" className="text-sm font-semibold text-stone-700">
-                      Preparation Time
+                      {t.preparationTime}
                     </label>
                     <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-0.5 text-sm font-bold text-amber-600">
                       {config.prepTime} min
@@ -328,9 +368,9 @@ export default function Home() {
                 {/* Number of People */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-stone-700">Number of People</label>
+                    <label className="text-sm font-semibold text-stone-700">{t.numberOfPeople}</label>
                     <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-0.5 text-sm font-bold text-stone-600">
-                      {servingsCount} {servingsCount === 1 ? 'person' : 'people'}
+                      {t.personCount(servingsCount)}
                     </span>
                   </div>
                   <div className="mt-3 flex items-center gap-3">
@@ -359,10 +399,11 @@ export default function Home() {
 
                 {/* Dietary preferences */}
                 <div>
-                  <p className="mb-3 text-sm font-semibold text-stone-700">Dietary Preferences</p>
+                  <p className="mb-3 text-sm font-semibold text-stone-700">{t.dietaryPreferences}</p>
                   <div className="flex flex-col gap-2.5">
-                    {DIETARY_OPTIONS.map(({ key, label, emoji, accent }) => {
+                    {DIETARY_KEYS.map(({ key, emoji, accent }) => {
                       const active = config.dietary[key];
+                      const dietaryLabel = t[key as keyof typeof t] as string;
                       const border = active
                         ? accent === 'blue'   ? 'border-blue-300 bg-blue-50'
                         : accent === 'orange' ? 'border-orange-300 bg-orange-50'
@@ -384,8 +425,8 @@ export default function Home() {
                           <input type="checkbox" checked={active} onChange={() => toggleDietary(key)}
                             className="h-4 w-4 cursor-pointer rounded accent-emerald-500" />
                           <span className="text-base leading-none">{emoji}</span>
-                          <span className={`text-sm font-medium ${text}`}>{label}</span>
-                          {active && <span className={`ml-auto text-xs font-semibold ${badge}`}>Active</span>}
+                          <span className={`text-sm font-medium ${text}`}>{dietaryLabel}</span>
+                          {active && <span className={`ml-auto text-xs font-semibold ${badge}`}>{t.active}</span>}
                         </label>
                       );
                     })}
@@ -394,7 +435,7 @@ export default function Home() {
 
                 {/* Preferred Cuisine */}
                 <div>
-                  <p className="mb-3 text-sm font-semibold text-stone-700">Preferred Cuisine</p>
+                  <p className="mb-3 text-sm font-semibold text-stone-700">{t.preferredCuisine}</p>
                   <div className="flex flex-wrap gap-2">
                     {CUISINE_OPTIONS.map(({ value, label, emoji }) => {
                       const active = cuisine === value;
@@ -424,10 +465,10 @@ export default function Home() {
                 {/* Craving */}
                 <div>
                   <label htmlFor="craving" className="mb-2 block text-sm font-semibold text-stone-700">
-                    What are you craving right now?
+                    {t.craving}
                   </label>
                   <textarea id="craving" value={config.craving} onChange={e => setCraving(e.target.value)}
-                    placeholder="e.g. something warm and comforting, spicy noodles, a light summer salad…"
+                    placeholder={t.cravingPlaceholder}
                     rows={3}
                     className="w-full resize-none rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 transition focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                   />
@@ -442,12 +483,12 @@ export default function Home() {
                   {loading ? (
                     <>
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Generating 3 recipes…
+                      {t.generatingRecipes}
                     </>
                   ) : (
                     <>
                       <span className="text-base">✨</span>
-                      Find Recipes{servingsCount > 1 ? ` for ${servingsCount}` : ''}
+                      {t.findRecipesBtn(servingsCount)}
                     </>
                   )}
                 </button>
@@ -462,18 +503,19 @@ export default function Home() {
           <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
             <span className="mt-0.5 shrink-0 text-lg">⚠️</span>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-red-700">Could not generate recipes</p>
+              <p className="text-sm font-semibold text-red-700">{t.couldNotGenerate}</p>
               <p className="mt-0.5 text-xs text-red-600">{fetchError}</p>
             </div>
             <button onClick={() => setFetchError(null)} className="shrink-0 text-xs text-red-400 hover:text-red-600">✕</button>
           </div>
         )}
 
-        {/* ── Recipe Display — tabbed 3-recipe card ─────── */}
+        {/* ── Recipe Display ─────────────────────────── */}
         {recipes && (
           <RecipeDisplay
             recipes={recipes}
             pantry={pantry}
+            lang={currentLanguage}
             onCookedThis={handleCookedThis}
             onDismiss={() => { setRecipes(null); setFetchError(null); }}
           />

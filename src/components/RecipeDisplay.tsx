@@ -3,17 +3,20 @@
 import { useState } from 'react';
 import type { GeneratedRecipe, PantryItem } from '@/lib/types';
 import { getStep } from '@/lib/pantry';
+import { translations, type Language } from '@/lib/translations';
 
 interface Props {
   recipes:      GeneratedRecipe[];
   pantry:       PantryItem[];
+  lang:         Language;
   onCookedThis: (recipe: GeneratedRecipe) => void;
   onDismiss:    () => void;
 }
 
-export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss }: Props) {
+export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onDismiss }: Props) {
   const [activeTab, setActiveTab] = useState(0);
   const recipe = recipes[Math.min(activeTab, recipes.length - 1)];
+  const t = translations[lang];
 
   if (!recipe) return null;
 
@@ -40,7 +43,7 @@ export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss
               ].join(' ')}
             >
               <span className={`text-xs font-bold uppercase tracking-widest ${active ? 'text-emerald-600' : 'text-stone-400'}`}>
-                Option {i + 1}
+                {t.optionLabel} {i + 1}
               </span>
               <span className={`line-clamp-1 text-sm font-semibold ${active ? 'text-stone-900' : 'text-stone-500'}`}>
                 {r.recipeName}
@@ -54,7 +57,7 @@ export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss
       <div className="flex items-start justify-between gap-4 bg-gradient-to-br from-emerald-50 to-white px-7 py-6">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-emerald-600">
-            AI-Generated Recipe
+            {t.aiGeneratedRecipe}
           </p>
           <h3 className="text-2xl font-bold text-stone-900">{recipe.recipeName}</h3>
           <p className="mt-1.5 text-sm text-stone-500">{recipe.whyItMatchesCraving}</p>
@@ -70,7 +73,7 @@ export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss
         {/* Instructions */}
         <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-stone-400">
-            Instructions
+            {t.instructions}
           </p>
           <ol className="flex flex-col gap-3">
             {recipe.instructions.map((step, i) => (
@@ -91,7 +94,7 @@ export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss
           {hasSubs && (
             <div>
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-stone-400">
-                Smart Substitutions
+                {t.smartSubstitutions}
               </p>
               <ul className="flex flex-col gap-2">
                 {Object.entries(recipe.substitutedIngredients).map(([missing, sub]) => (
@@ -108,7 +111,7 @@ export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss
 
           {/* Pantry deduction preview */}
           <div className="rounded-xl border border-stone-100 bg-stone-50 p-4">
-            <p className="text-sm font-semibold text-stone-700">Pantry impact</p>
+            <p className="text-sm font-semibold text-stone-700">{t.pantryImpact}</p>
             {hasDeducts ? (
               <ul className="mt-2 flex flex-col gap-1">
                 {Object.entries(recipe.exactPantryQuantitiesToSubtract).map(([name, amt]) => {
@@ -129,11 +132,10 @@ export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss
               </ul>
             ) : (
               <p className="mt-1 text-xs text-stone-500">
-                Clicking{' '}
-                <span className="font-semibold text-amber-600">I Cooked This!</span>{' '}
-                will deduct one serving of each ingredient (
-                {pantry.slice(0, 3).map(i => `${getStep(i.unit)} ${i.unit}`).join(', ')}
-                {pantry.length > 3 ? '…' : ''}).
+                {t.pantryImpactFallback(
+                  pantry.slice(0, 3).map(i => `${getStep(i.unit)} ${i.unit}`).join(', ') +
+                  (pantry.length > 3 ? '…' : '')
+                )}
               </p>
             )}
           </div>
@@ -146,14 +148,14 @@ export default function RecipeDisplay({ recipes, pantry, onCookedThis, onDismiss
           onClick={onDismiss}
           className="text-sm text-stone-400 transition hover:text-stone-600"
         >
-          Dismiss
+          {t.dismiss}
         </button>
         <button
           onClick={() => onCookedThis(recipe)}
           className="flex items-center gap-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-amber-600 hover:to-amber-700 hover:shadow-lg active:scale-[0.98]"
         >
           <span className="text-base">🍽️</span>
-          I Cooked This!
+          {t.iCookedThis}
         </button>
       </div>
     </div>
