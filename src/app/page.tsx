@@ -6,9 +6,11 @@ import {
   decrementItems, deductByName, clearPantry, getStep,
 } from '@/lib/pantry';
 import RecipeDisplay from '@/components/RecipeDisplay';
+import AISettingsPanel from '@/components/AISettingsPanel';
 import type { PantryItem, MealConfig, GeneratedRecipe, GeneratedRecipeResponse } from '@/lib/types';
 import { UNITS } from '@/lib/types';
 import { translations, type Language } from '@/lib/translations';
+import { type AIConfig, loadAIConfig, saveAIConfig, PROVIDER_META } from '@/lib/ai-config';
 
 type CuisineOption =
   | 'any'
@@ -80,13 +82,16 @@ export default function Home() {
     dietary:  { vegetarian: false, vegan: false, glutenFree: false, highProtein: false, lowCarb: false },
     craving:  '',
   });
-  const [loading,    setLoading]    = useState(false);
-  const [recipes,    setRecipes]    = useState<GeneratedRecipe[] | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [mounted,    setMounted]    = useState(false);
+  const [loading,         setLoading]         = useState(false);
+  const [recipes,         setRecipes]         = useState<GeneratedRecipe[] | null>(null);
+  const [fetchError,      setFetchError]      = useState<string | null>(null);
+  const [mounted,         setMounted]         = useState(false);
+  const [aiConfig,        setAIConfig]        = useState<AIConfig>(loadAIConfig());
+  const [showAISettings,  setShowAISettings]  = useState(false);
 
   useEffect(() => {
     setPantryState(getPantry());
+    setAIConfig(loadAIConfig());
     setMounted(true);
   }, []);
 
@@ -146,6 +151,14 @@ export default function Home() {
           servingsCount,
           preferredCuisine:    cuisine,
           language:            currentLanguage,
+          aiConfig: {
+            provider:       aiConfig.provider,
+            apiKey:         aiConfig.provider !== 'server' ? aiConfig.apiKey : undefined,
+            groqModel:      aiConfig.groqModel,
+            openaiModel:    aiConfig.openaiModel,
+            ollamaEndpoint: aiConfig.ollamaEndpoint,
+            ollamaModel:    aiConfig.ollamaModel,
+          },
         }),
       });
 
@@ -178,7 +191,14 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [pantry, config, loading, servingsCount, cuisine, currentLanguage]);
+  }, [pantry, config, loading, servingsCount, cuisine, currentLanguage, aiConfig]);
+
+  /* ── AI Config ───────────────────────────────── */
+  const handleSaveAIConfig = useCallback((cfg: AIConfig) => {
+    saveAIConfig(cfg);
+    setAIConfig(cfg);
+    setShowAISettings(false);
+  }, []);
 
   /* ── I Cooked This! ───────────────────────────── */
   const handleCookedThis = useCallback((recipe: GeneratedRecipe) => {
@@ -208,28 +228,44 @@ export default function Home() {
             <p className="mt-0.5 text-xs text-stone-500">{t.appSubtitle}</p>
           </div>
 
-          {/* Language selector */}
-          <div className="ml-auto flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 p-0.5">
-            {(Object.keys(LANG_LABELS) as Language[]).map(lang => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => setCurrentLanguage(lang)}
-                className={[
-                  'rounded-full px-3 py-1 text-xs font-semibold transition-all',
-                  currentLanguage === lang
-                    ? 'bg-white text-stone-900 shadow-sm ring-1 ring-stone-200'
-                    : 'text-stone-500 hover:text-stone-700',
-                ].join(' ')}
-              >
-                {LANG_LABELS[lang]}
-              </button>
-            ))}
-          </div>
+          {/* Right-side controls */}
+          <div className="ml-auto flex items-center gap-2">
 
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-            {t.hackathonBadge}
-          </span>
+            {/* Language selector */}
+            <div className="flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 p-0.5">
+              {(Object.keys(LANG_LABELS) as Language[]).map(lang => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setCurrentLanguage(lang)}
+                  className={[
+                    'rounded-full px-3 py-1 text-xs font-semibold transition-all',
+                    currentLanguage === lang
+                      ? 'bg-white text-stone-900 shadow-sm ring-1 ring-stone-200'
+                      : 'text-stone-500 hover:text-stone-700',
+                  ].join(' ')}
+                >
+                  {LANG_LABELS[lang]}
+                </button>
+              ))}
+            </div>
+
+            {/* AI provider button */}
+            <button
+              type="button"
+              onClick={() => setShowAISettings(true)}
+              title="AI Provider Settings"
+              className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-600 transition hover:border-stone-300 hover:bg-stone-100"
+            >
+              <span className="text-sm leading-none">{PROVIDER_META[aiConfig.provider].icon}</span>
+              <span className="hidden sm:inline">{PROVIDER_META[aiConfig.provider].shortLabel}</span>
+              <span className="text-stone-400">⚙</span>
+            </button>
+
+            <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 sm:inline">
+              {t.hackathonBadge}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -521,6 +557,15 @@ export default function Home() {
           />
         )}
       </main>
+
+      {/* ── AI Settings Modal ────────────────────────── */}
+      {showAISettings && (
+        <AISettingsPanel
+          config={aiConfig}
+          onSave={handleSaveAIConfig}
+          onClose={() => setShowAISettings(false)}
+        />
+      )}
     </div>
   );
 }

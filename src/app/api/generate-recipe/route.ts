@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync }               from 'fs';
 import { join }                       from 'path';
 import Groq                           from 'groq-sdk';
+import OpenAI                         from 'openai';
 import { scoreRecipes }               from '@/utils/recipeMatcher';
 import type {
   RecipeRow, MatchResult,
@@ -61,6 +62,15 @@ interface PantryItemPayload {
   unit:     string;
 }
 
+interface AIConfigPayload {
+  provider?:       string;
+  apiKey?:         string;
+  groqModel?:      string;
+  openaiModel?:    string;
+  ollamaEndpoint?: string;
+  ollamaModel?:    string;
+}
+
 interface RequestBody {
   pantryItems:         PantryItemPayload[];
   maxTime:             number;
@@ -69,6 +79,7 @@ interface RequestBody {
   servingsCount:       number;
   preferredCuisine:    string;
   language?:           string;
+  aiConfig?:           AIConfigPayload;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -451,6 +462,80 @@ function cleanJson(text: string): string {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Multi-provider AI call
+───────────────────────────────────────────────────────────── */
+type ChatMessage = { role: 'system' | 'user'; content: string };
+
+async function callAI(
+  messages:  ChatMessage[],
+  cfg:       AIConfigPayload,
+  signal:    AbortSignal,
+): Promise<string> {
+  const provider = cfg.provider ?? 'server';
+
+  /* ── Groq BYOK ───────────────────────────────── */
+  if (provider === 'groq' && cfg.apiKey) {
+    const client     = new Groq({ apiKey: cfg.apiKey });
+    const completion = await client.chat.completions.create(
+      {
+        model:           cfg.groqModel ?? 'llama-3.3-70b-versatile',
+        messages,
+        response_format: { type: 'json_object' },
+        max_tokens:      2500,
+        temperature:     0.6,
+      },
+      { signal },
+    );
+    return completion.choices[0]?.message?.content ?? '';
+  }
+
+  /* ── OpenAI BYOK ─────────────────────────────── */
+  if (provider === 'openai' && cfg.apiKey) {
+    const client     = new OpenAI({ apiKey: cfg.apiKey });
+    const completion = await client.chat.completions.create(
+      {
+        model:           cfg.openaiModel ?? 'gpt-4o-mini',
+        messages,
+        response_format: { type: 'json_object' },
+        max_tokens:      2500,
+        temperature:     0.6,
+      },
+      { signal },
+    );
+    return completion.choices[0]?.message?.content ?? '';
+  }
+
+  /* ── Ollama (local inference) ────────────────── */
+  if (provider === 'ollama') {
+    const endpoint = (cfg.ollamaEndpoint ?? 'http://localhost:11434').replace(/\/$/, '');
+    const client   = new OpenAI({ apiKey: 'ollama', baseURL: `${endpoint}/v1` });
+    const completion = await client.chat.completions.create(
+      {
+        model:       cfg.ollamaModel ?? 'llama3.2',
+        messages,
+        max_tokens:  2500,
+        temperature: 0.6,
+      },
+      { signal },
+    );
+    return completion.choices[0]?.message?.content ?? '';
+  }
+
+  /* ── Default: server-side Groq key ──────────── */
+  const completion = await groq.chat.completions.create(
+    {
+      model:           'llama-3.3-70b-versatile',
+      messages,
+      response_format: { type: 'json_object' },
+      max_tokens:      2500,
+      temperature:     0.6,
+    },
+    { signal },
+  );
+  return completion.choices[0]?.message?.content ?? '';
+}
+
+/* ─────────────────────────────────────────────────────────────
    GET /api/generate-recipe — connectivity health check
 ───────────────────────────────────────────────────────────── */
 export async function GET(): Promise<NextResponse> {
@@ -553,6 +638,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ? body.language
     : 'en';
 
+  const aiCfg: AIConfigPayload =
+    body.aiConfig && typeof body.aiConfig === 'object' ? body.aiConfig : {};
+
   const pantryIngredients = pantryItems.map(i => i.name);
 
   /* ── 2. Local matcher — top 6 candidates (AI picks best 3) ── */
@@ -565,9 +653,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Internal recipe matcher error.' }, { status: 500 });
   }
 
-  /* ── 3. Guard: missing key → structural fallback ───────── */
-  if (!process.env.GROQ_API_KEY) {
-    console.warn('[generate-recipe] GROQ_API_KEY not set — returning structural fallback');
+  /* ── 3. Guard: no AI available → structural fallback ──────────── */
+  const usingServer  = !aiCfg.provider || aiCfg.provider === 'server';
+  const usingBYOK    = (aiCfg.provider === 'groq' || aiCfg.provider === 'openai') && !!aiCfg.apiKey;
+  const usingOllama  = aiCfg.provider === 'ollama';
+  const hasServerKey = !!process.env.GROQ_API_KEY;
+
+  if (usingServer && !hasServerKey) {
+    console.warn('[generate-recipe] No GROQ_API_KEY and no user AI config — returning structural fallback');
     return NextResponse.json(buildFallback(topMatches, maxTime, craving));
   }
 
@@ -576,40 +669,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     pantryItems, maxTime, craving, dietaryRestrictions, topMatches, servingsCount, preferredCuisine, language,
   );
 
-  /* ── 5. Call Groq with 20-second timeout ────────────────── */
+  const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+    { role: 'system', content: SYSTEM_INSTRUCTION },
+    { role: 'user',   content: userPrompt },
+  ];
+
+  /* ── 5. Call AI provider with 20-second timeout ─────────── */
   const controller = new AbortController();
   const timeoutId  = setTimeout(() => controller.abort(), 20_000);
 
   let rawText = '';
   try {
-    const completion = await groq.chat.completions.create(
-      {
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: SYSTEM_INSTRUCTION },
-          { role: 'user',   content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens:  2500,
-        temperature: 0.6,
-      },
-      { signal: controller.signal },
-    );
-    clearTimeout(timeoutId);
+    const providerLabel =
+      usingBYOK   ? `${aiCfg.provider?.toUpperCase()} BYOK`
+      : usingOllama ? `Ollama (${aiCfg.ollamaModel ?? 'llama3.2'})`
+      : 'Groq (server)';
+    console.log(`[generate-recipe] using provider: ${providerLabel}`);
 
-    const finishReason = completion.choices[0]?.finish_reason;
-    if (finishReason && finishReason !== 'stop') {
-      console.warn('[generate-recipe] finish_reason:', finishReason);
-    }
-    rawText = completion.choices[0]?.message?.content ?? '';
+    rawText = await callAI(messages, aiCfg, controller.signal);
+    clearTimeout(timeoutId);
 
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err instanceof Groq.APIError) {
-      console.error(`[generate-recipe] Groq error ${err.status}:`, err.message);
+    const isTimeout  = err instanceof Error && err.name === 'AbortError';
+    const isAPIError = err && typeof err === 'object' && 'status' in err && 'message' in err;
+    if (isAPIError) {
+      const e = err as { status: number; message: string };
+      console.error(`[generate-recipe] API error ${e.status}:`, e.message);
     } else {
-      console.error('[generate-recipe]', err instanceof Error && err.name === 'AbortError'
-        ? 'timeout (>20 s)' : String(err));
+      console.error('[generate-recipe]', isTimeout ? 'timeout (>20 s)' : String(err));
     }
     return NextResponse.json(buildFallback(topMatches, maxTime, craving));
   }
