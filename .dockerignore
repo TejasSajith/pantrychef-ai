@@ -1,0 +1,13 @@
+.git
+.gitignore
+.next
+node_modules
+coverage
+.env*
+!.env.example
+*.md
+!README.md
+.DS_Store
+npm-debug.log*
+.pre-commit-config.yaml
+.secrets.baseline
