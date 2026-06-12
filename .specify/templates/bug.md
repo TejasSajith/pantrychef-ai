@@ -3,7 +3,7 @@
 **Status:** draft | review | accepted | implemented | deprecated  
 **Author:** @username  
 **Severity:** critical | high | medium | low  
-**Created:** YYYY-MM-DD  
+**Created:** YYYY-MM-DD
 
 ---
 
@@ -13,9 +13,9 @@
 
 ## Steps to Reproduce
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Expected Behaviour
 
@@ -37,10 +37,10 @@
 
 ## Affected Versions
 
-- First broken in: 
-- Confirmed broken on: 
+- First broken in:
+- Confirmed broken on:
 
 ## References
 
-- Issue: 
+- Issue:
 - Related spec: `specs/`

@@ -70,17 +70,17 @@ const en: Translations = {
   clearAll: 'Clear all',
   pantryEmpty: 'Your pantry is empty',
   pantryEmptySub: 'Add ingredients above to start discovering recipes',
-  itemCount: n => `${n} ${n === 1 ? 'item' : 'items'}`,
+  itemCount: (n) => `${n} ${n === 1 ? 'item' : 'items'}`,
 
   preparationTime: 'Preparation Time',
   numberOfPeople: 'Number of People',
-  personCount: n => `${n} ${n === 1 ? 'person' : 'people'}`,
+  personCount: (n) => `${n} ${n === 1 ? 'person' : 'people'}`,
   dietaryPreferences: 'Dietary Preferences',
   preferredCuisine: 'Preferred Cuisine',
   craving: 'What are you craving right now?',
   cravingPlaceholder: 'e.g. something warm and comforting, spicy noodles, a light summer salad…',
 
-  findRecipesBtn: n => n > 1 ? `Find Recipes for ${n}` : 'Find Recipes',
+  findRecipesBtn: (n) => (n > 1 ? `Find Recipes for ${n}` : 'Find Recipes'),
   generatingRecipes: 'Generating 3 recipes…',
 
   couldNotGenerate: 'Could not generate recipes',
@@ -111,7 +111,7 @@ const en: Translations = {
   pantryImpact: 'Pantry impact',
   iCookedThis: 'I Cooked This!',
   dismiss: 'Dismiss',
-  pantryImpactFallback: units =>
+  pantryImpactFallback: (units) =>
     `Clicking I Cooked This! will deduct one serving of each ingredient (${units}).`,
 };
 
@@ -128,17 +128,17 @@ const hi: Translations = {
   clearAll: 'सब हटाएं',
   pantryEmpty: 'आपकी पैंट्री खाली है',
   pantryEmptySub: 'रेसिपी खोजने के लिए ऊपर सामग्री जोड़ें',
-  itemCount: n => `${n} ${n === 1 ? 'सामग्री' : 'सामग्रियां'}`,
+  itemCount: (n) => `${n} ${n === 1 ? 'सामग्री' : 'सामग्रियां'}`,
 
   preparationTime: 'तैयारी का समय',
   numberOfPeople: 'लोगों की संख्या',
-  personCount: n => `${n} ${n === 1 ? 'व्यक्ति' : 'लोग'}`,
+  personCount: (n) => `${n} ${n === 1 ? 'व्यक्ति' : 'लोग'}`,
   dietaryPreferences: 'आहार प्राथमिकताएं',
   preferredCuisine: 'पसंदीदा व्यंजन',
   craving: 'अभी क्या खाने का मन है?',
   cravingPlaceholder: 'उदा. कुछ गर्म और आरामदायक, मसालेदार नूडल्स…',
 
-  findRecipesBtn: n => n > 1 ? `${n} के लिए रेसिपी खोजें` : 'रेसिपी खोजें',
+  findRecipesBtn: (n) => (n > 1 ? `${n} के लिए रेसिपी खोजें` : 'रेसिपी खोजें'),
   generatingRecipes: '3 रेसिपी बनाई जा रही हैं…',
 
   couldNotGenerate: 'रेसिपी नहीं बन सकी',
@@ -169,7 +169,7 @@ const hi: Translations = {
   pantryImpact: 'पैंट्री प्रभाव',
   iCookedThis: 'मैंने यह बनाया!',
   dismiss: 'बंद करें',
-  pantryImpactFallback: units =>
+  pantryImpactFallback: (units) =>
     `"मैंने यह बनाया!" दबाने पर प्रत्येक सामग्री से एक सर्विंग घटाई जाएगी (${units}).`,
 };
 
@@ -186,17 +186,17 @@ const ml: Translations = {
   clearAll: 'എല്ലാം മായ്ക്കുക',
   pantryEmpty: 'നിങ്ങളുടെ പാൻട്രി ശൂന്യമാണ്',
   pantryEmptySub: 'റെസിപ്പി കണ്ടെത്താൻ മുകളിൽ ചേർക്കുക',
-  itemCount: n => `${n} ${n === 1 ? 'ഇനം' : 'ഇനങ്ങൾ'}`,
+  itemCount: (n) => `${n} ${n === 1 ? 'ഇനം' : 'ഇനങ്ങൾ'}`,
 
   preparationTime: 'തയ്യാറാക്കൽ സമയം',
   numberOfPeople: 'ആളുകളുടെ എണ്ണം',
-  personCount: n => `${n} ${n === 1 ? 'വ്യക്തി' : 'ആളുകൾ'}`,
+  personCount: (n) => `${n} ${n === 1 ? 'വ്യക്തി' : 'ആളുകൾ'}`,
   dietaryPreferences: 'ഭക്ഷണ മുൻഗണനകൾ',
   preferredCuisine: 'ഇഷ്ടപ്പെട്ട ഭക്ഷണരീതി',
   craving: 'ഇപ്പോൾ എന്ത് കഴിക്കണം?',
   cravingPlaceholder: 'ഉദാ. ചൂടുള്ളത്, മസാല നൂഡിൽസ്, ഹൽക്കൽ സലാഡ്…',
 
-  findRecipesBtn: n => n > 1 ? `${n} പേർക്ക് റെസിപ്പി` : 'റെസിപ്പി കണ്ടെത്തുക',
+  findRecipesBtn: (n) => (n > 1 ? `${n} പേർക്ക് റെസിപ്പി` : 'റെസിപ്പി കണ്ടെത്തുക'),
   generatingRecipes: '3 റെസിപ്പികൾ തയ്യാറാക്കുന്നു…',
 
   couldNotGenerate: 'റെസിപ്പി ഉണ്ടാക്കാൻ കഴിഞ്ഞില്ല',
@@ -227,7 +227,7 @@ const ml: Translations = {
   pantryImpact: 'പാൻട്രി സ്വാധീനം',
   iCookedThis: 'ഞാൻ ഇത് പാകം ചെയ്തു!',
   dismiss: 'നിരസിക്കുക',
-  pantryImpactFallback: units =>
+  pantryImpactFallback: (units) =>
     `"ഞാൻ ഇത് പാകം ചെയ്തു!" അമർത്തിയാൽ ഓരോ ചേരുവയിൽ നിന്നും ഒരു സർവ്വിംഗ് കുറയ്ക്കും (${units}).`,
 };
 

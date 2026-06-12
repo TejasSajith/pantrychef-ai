@@ -42,14 +42,14 @@ describe('scoreRecipes', () => {
 
   it('matches plural forms (eggs → egg)', () => {
     const results = scoreRecipes(['egg'], recipes, 3);
-    const eggRice = results.find(r => r.recipe.recipe_name === 'Egg Fried Rice');
+    const eggRice = results.find((r) => r.recipe.recipe_name === 'Egg Fried Rice');
     expect(eggRice).toBeDefined();
     expect(eggRice!.matchCount).toBeGreaterThan(0);
   });
 
   it('matches partial pantry items (tomato → tomatoes)', () => {
     const results = scoreRecipes(['tomato'], recipes, 3);
-    const withTomatoes = results.filter(r => r.matchCount > 0);
+    const withTomatoes = results.filter((r) => r.matchCount > 0);
     expect(withTomatoes.length).toBeGreaterThan(0);
   });
 

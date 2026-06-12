@@ -2,7 +2,7 @@
 
 **Status:** proposed | accepted | deprecated | superseded by ADR-[NNN]  
 **Author:** @username  
-**Date:** YYYY-MM-DD  
+**Date:** YYYY-MM-DD
 
 ---
 
@@ -17,21 +17,24 @@
 ## Consequences
 
 ### Positive
-- 
+
+-
 
 ### Negative
-- 
+
+-
 
 ### Risks
-- 
+
+-
 
 ## Alternatives Considered
 
-| Option | Why rejected |
-|---|---|
-| Option A | |
-| Option B | |
+| Option   | Why rejected |
+| -------- | ------------ |
+| Option A |              |
+| Option B |              |
 
 ## References
 
-- 
+-

@@ -6,11 +6,11 @@ import { getStep } from '@/lib/pantry';
 import { translations, type Language } from '@/lib/translations';
 
 interface Props {
-  recipes:      GeneratedRecipe[];
-  pantry:       PantryItem[];
-  lang:         Language;
+  recipes: GeneratedRecipe[];
+  pantry: PantryItem[];
+  lang: Language;
   onCookedThis: (recipe: GeneratedRecipe) => void;
-  onDismiss:    () => void;
+  onDismiss: () => void;
 }
 
 export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onDismiss }: Props) {
@@ -20,12 +20,11 @@ export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onD
 
   if (!recipe) return null;
 
-  const hasSubs    = Object.keys(recipe.substitutedIngredients).length > 0;
+  const hasSubs = Object.keys(recipe.substitutedIngredients).length > 0;
   const hasDeducts = Object.keys(recipe.exactPantryQuantitiesToSubtract).length > 0;
 
   return (
     <div className="mt-8 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-md">
-
       {/* ── Tab bar ──────────────────────────────────────── */}
       <div className="flex border-b border-stone-100 bg-stone-50/60">
         {recipes.map((r, i) => {
@@ -42,10 +41,14 @@ export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onD
                   : 'border-transparent text-stone-500 hover:border-stone-300 hover:bg-white/80',
               ].join(' ')}
             >
-              <span className={`text-xs font-bold uppercase tracking-widest ${active ? 'text-emerald-600' : 'text-stone-400'}`}>
+              <span
+                className={`text-xs font-bold uppercase tracking-widest ${active ? 'text-emerald-600' : 'text-stone-400'}`}
+              >
                 {t.optionLabel} {i + 1}
               </span>
-              <span className={`line-clamp-1 text-sm font-semibold ${active ? 'text-stone-900' : 'text-stone-500'}`}>
+              <span
+                className={`line-clamp-1 text-sm font-semibold ${active ? 'text-stone-900' : 'text-stone-500'}`}
+              >
                 {r.recipeName}
               </span>
             </button>
@@ -69,7 +72,6 @@ export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onD
 
       {/* ── Body: instructions + right column ────────────── */}
       <div className="grid grid-cols-1 gap-6 px-7 py-6 md:grid-cols-2">
-
         {/* Instructions */}
         <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-stone-400">
@@ -89,7 +91,6 @@ export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onD
 
         {/* Right column */}
         <div className="flex flex-col gap-4">
-
           {/* Substitutions */}
           {hasSubs && (
             <div>
@@ -115,16 +116,20 @@ export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onD
             {hasDeducts ? (
               <ul className="mt-2 flex flex-col gap-1">
                 {Object.entries(recipe.exactPantryQuantitiesToSubtract).map(([name, amt]) => {
-                  const pantryItem = pantry.find(p => {
+                  const pantryItem = pantry.find((p) => {
                     const n = name.toLowerCase().trim();
                     return p.name === n || p.name.includes(n) || n.includes(p.name);
                   });
                   const unit = pantryItem?.unit ?? '';
                   return (
-                    <li key={name} className="flex items-center justify-between text-xs text-stone-600">
+                    <li
+                      key={name}
+                      className="flex items-center justify-between text-xs text-stone-600"
+                    >
                       <span className="capitalize">{name}</span>
                       <span className="font-semibold tabular-nums text-red-500">
-                        −{amt}{unit ? ` ${unit}` : ''}
+                        −{amt}
+                        {unit ? ` ${unit}` : ''}
                       </span>
                     </li>
                   );
@@ -133,8 +138,10 @@ export default function RecipeDisplay({ recipes, pantry, lang, onCookedThis, onD
             ) : (
               <p className="mt-1 text-xs text-stone-500">
                 {t.pantryImpactFallback(
-                  pantry.slice(0, 3).map(i => `${getStep(i.unit)} ${i.unit}`).join(', ') +
-                  (pantry.length > 3 ? '…' : '')
+                  pantry
+                    .slice(0, 3)
+                    .map((i) => `${getStep(i.unit)} ${i.unit}`)
+                    .join(', ') + (pantry.length > 3 ? '…' : '')
                 )}
               </p>
             )}

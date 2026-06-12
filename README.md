@@ -10,7 +10,7 @@ It is a single **Next.js** web app that runs entirely in the browser for all
 matching logic, with one serverless function for AI generation, deployed on
 **Vercel**.
 
-🔗 **Live app:** *(coming soon — hackathon deployment in progress)*
+🔗 **Live app:** _(coming soon — hackathon deployment in progress)_
 
 ---
 
@@ -31,14 +31,14 @@ matching logic, with one serverless function for AI generation, deployed on
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| Framework | **Next.js 16**, **React 19**, **TypeScript** |
-| Styling | **Tailwind CSS v4** |
-| AI | **Groq SDK** — `llama-3.3-70b-versatile` |
+| Layer          | Technology                                                   |
+| -------------- | ------------------------------------------------------------ |
+| Framework      | **Next.js 16**, **React 19**, **TypeScript**                 |
+| Styling        | **Tailwind CSS v4**                                          |
+| AI             | **Groq SDK** — `llama-3.3-70b-versatile`                     |
 | Recipe dataset | Kaggle CSV → pre-built `cleaned_recipes.json` (~13k recipes) |
-| Persistence | Browser `localStorage` |
-| Hosting | **Vercel** (serverless function for AI route) |
+| Persistence    | Browser `localStorage`                                       |
+| Hosting        | **Vercel** (serverless function for AI route)                |
 
 ---
 
@@ -73,10 +73,12 @@ pantrychefai/
 ## Installation
 
 ### Prerequisites
+
 - **Node.js 20+** and npm
 - A free **Groq API key** at <https://console.groq.com/keys>
 
 ### 1. Clone and install dependencies
+
 ```bash
 git clone https://code.swecha.org/t_sajith/pantrychefai.git
 cd pantrychefai
@@ -84,19 +86,25 @@ npm install
 ```
 
 ### 2. Configure environment variables
+
 Create `.env.local` in the project root:
+
 ```bash
 cp .env.example .env.local   # or create the file manually
 ```
+
 ```
 GROQ_API_KEY=gsk_...
 ```
+
 > ⚠️ Never commit `.env.local`. The key is read only by the serverless function and is never exposed to the browser.
 
 ### 3. Start the development server
+
 ```bash
 npm run dev
 ```
+
 Open <http://localhost:3000> in your browser.
 
 ---
@@ -104,6 +112,7 @@ Open <http://localhost:3000> in your browser.
 ## Usage
 
 ### Development
+
 ```bash
 npm run dev       # start local server at localhost:3000
 npm run build     # production build
@@ -112,14 +121,17 @@ npm run lint      # ESLint check
 ```
 
 ### Rebuilding the recipe dataset
+
 The Kaggle CSV has already been converted and committed as
 `public/data/cleaned_recipes.json`. Only re-run this if you want to swap in a
 different dataset:
+
 ```bash
 npm run db:build  # scripts/mergeData.ts → public/data/cleaned_recipes.json
 ```
 
 ### Deploy to Vercel
+
 ```bash
 vercel login
 vercel link
@@ -169,8 +181,8 @@ Browser
 
 ## Contributors
 
-| Contributor | Role |
-|---|---|
+| Contributor                                                      | Role                                                                    |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | **Tejas Sajith** ([@t_sajith](https://code.swecha.org/t_sajith)) | Full-stack — pantry UI, local matcher, Groq integration, recipe display |
 
 ---

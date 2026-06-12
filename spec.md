@@ -42,8 +42,9 @@ flowchart TD
 ```
 
 **Key constraints:**
-- The CSV → JSON conversion happens **at build time** (script run once, output committed).  
-- The LocalMatcher runs **entirely in the browser** — zero server cost, near-instant.  
+
+- The CSV → JSON conversion happens **at build time** (script run once, output committed).
+- The LocalMatcher runs **entirely in the browser** — zero server cost, near-instant.
 - The Vercel Function only handles the Claude call, keeping it well under the 10 s free-tier limit.
 
 ---
@@ -88,9 +89,9 @@ pantrychefai/
 // lib/types.ts
 
 export interface PantryItem {
-  id: string;           // nanoid() — stable key for React lists
-  name: string;         // normalized to lowercase, e.g. "chicken breast"
-  addedAt: number;      // Date.now() timestamp
+  id: string; // nanoid() — stable key for React lists
+  name: string; // normalized to lowercase, e.g. "chicken breast"
+  addedAt: number; // Date.now() timestamp
 }
 
 // The localStorage key is "pantry_items"
@@ -100,11 +101,11 @@ export interface PantryItem {
 **localStorage helper contract (`lib/pantry.ts`):**
 
 ```typescript
-export function getPantry(): PantryItem[]
-export function setPantry(items: PantryItem[]): void
-export function addItem(name: string): PantryItem[]   // deduplicates by normalized name
-export function removeItem(id: string): PantryItem[]
-export function clearPantry(): void
+export function getPantry(): PantryItem[];
+export function setPantry(items: PantryItem[]): void;
+export function addItem(name: string): PantryItem[]; // deduplicates by normalized name
+export function removeItem(id: string): PantryItem[];
+export function clearPantry(): void;
 ```
 
 ---
@@ -113,12 +114,12 @@ export function clearPantry(): void
 
 Expected source: `Food Ingredients and Recipes Dataset` (Kaggle, ~13k rows).
 
-| Column name        | Type     | Notes                                             |
-|--------------------|----------|---------------------------------------------------|
-| `Title`            | `string` | Recipe display name                               |
-| `Ingredients`      | `string` | Raw text, comma-separated or `['item', 'item']`  |
-| `Instructions`     | `string` | Full multi-step cooking text                      |
-| `Image_Name`       | `string` | Filename stub (optional, used for placeholder)    |
+| Column name           | Type     | Notes                                           |
+| --------------------- | -------- | ----------------------------------------------- |
+| `Title`               | `string` | Recipe display name                             |
+| `Ingredients`         | `string` | Raw text, comma-separated or `['item', 'item']` |
+| `Instructions`        | `string` | Full multi-step cooking text                    |
+| `Image_Name`          | `string` | Filename stub (optional, used for placeholder)  |
 | `Cleaned_Ingredients` | `string` | Pre-parsed ingredient list (preferred over raw) |
 
 **Normalized internal shape after CSV → JSON conversion:**
@@ -127,15 +128,16 @@ Expected source: `Food Ingredients and Recipes Dataset` (Kaggle, ~13k rows).
 // lib/types.ts
 
 export interface RecipeRow {
-  id: string;             // slugified Title used as stable key
+  id: string; // slugified Title used as stable key
   title: string;
-  ingredients: string[];  // lowercased, trimmed individual tokens
-  instructions: string;   // kept verbatim for the AI prompt
+  ingredients: string[]; // lowercased, trimmed individual tokens
+  instructions: string; // kept verbatim for the AI prompt
   imageStub?: string;
 }
 ```
 
 **CSV → JSON script notes (`scripts/build-data.ts`):**
+
 - Use `papaparse` for CSV parsing.
 - Parse `Cleaned_Ingredients` first; fall back to `Ingredients`.
 - Strip quantity/unit tokens (regex: remove leading numbers, fractions, and unit words like `cup`, `tbsp`, `oz`).
@@ -154,10 +156,10 @@ export interface RecipeRow {
 
 export interface MatchResult {
   recipe: RecipeRow;
-  matchCount: number;      // number of pantry items found in recipe.ingredients
-  matchRatio: number;      // matchCount / recipe.ingredients.length  (0–1)
-  matchedItems: string[];  // which pantry items matched
-  missingItems: string[];  // recipe.ingredients not in pantry
+  matchCount: number; // number of pantry items found in recipe.ingredients
+  matchRatio: number; // matchCount / recipe.ingredients.length  (0–1)
+  matchedItems: string[]; // which pantry items matched
+  missingItems: string[]; // recipe.ingredients not in pantry
 }
 ```
 
@@ -197,7 +199,7 @@ function findMatches(pantry, recipes, topN):
 function normalize(s: string): string {
   return s
     .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, '')   // strip punctuation
+    .replace(/[^a-z0-9 ]/g, '') // strip punctuation
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -217,7 +219,7 @@ function normalize(s: string): string {
 
 ```typescript
 interface RecipeRequest {
-  match: MatchResult;   // single top match to enrich (one call per card)
+  match: MatchResult; // single top match to enrich (one call per card)
 }
 ```
 
@@ -226,16 +228,17 @@ interface RecipeRequest {
 ```typescript
 interface RecipeResponse {
   title: string;
-  description: string;         // 1–2 sentence hook
+  description: string; // 1–2 sentence hook
   servings: number;
-  prepTime: string;            // e.g. "15 min"
-  cookTime: string;            // e.g. "30 min"
-  steps: string[];             // 4–7 numbered instructions
-  substitutions: {             // only for missingItems
+  prepTime: string; // e.g. "15 min"
+  cookTime: string; // e.g. "30 min"
+  steps: string[]; // 4–7 numbered instructions
+  substitutions: {
+    // only for missingItems
     ingredient: string;
     substitute: string;
   }[];
-  tips: string;                // one practical tip
+  tips: string; // one practical tip
 }
 ```
 
@@ -271,13 +274,13 @@ Return this exact JSON shape:
 
 **Timeout mitigation strategies:**
 
-| Strategy | Implementation |
-|---|---|
-| Hard token cap | `max_tokens: 600` — prevents runaway generation |
-| Minimal prompt | No examples (few-shot), no chain-of-thought instruction |
-| Single JSON object | No markdown wrapper forces direct output |
-| Cap missing items | Only top 5 missing items sent to prompt |
-| Model selection | Use `claude-haiku-4-5` — fastest Claude model, ideal for structured JSON |
+| Strategy           | Implementation                                                           |
+| ------------------ | ------------------------------------------------------------------------ |
+| Hard token cap     | `max_tokens: 600` — prevents runaway generation                          |
+| Minimal prompt     | No examples (few-shot), no chain-of-thought instruction                  |
+| Single JSON object | No markdown wrapper forces direct output                                 |
+| Cap missing items  | Only top 5 missing items sent to prompt                                  |
+| Model selection    | Use `claude-haiku-4-5` — fastest Claude model, ideal for structured JSON |
 
 ---
 
@@ -297,9 +300,7 @@ export async function POST(req: Request) {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 600,
-    messages: [
-      { role: 'user', content: buildRecipePrompt(body.match) }
-    ],
+    messages: [{ role: 'user', content: buildRecipePrompt(body.match) }],
   });
 
   const raw = (message.content[0] as { type: 'text'; text: string }).text;
@@ -384,28 +385,28 @@ npm install -D @types/papaparse tsx
 
 ### Day 1 — Data + Core Logic
 
-| # | Task | File(s) |
-|---|------|---------|
-| 1 | Scaffold Next.js 14 project with TypeScript | `npx create-next-app@latest` |
-| 2 | Define all TypeScript interfaces | `lib/types.ts` |
-| 3 | Download Kaggle CSV, run conversion script | `scripts/build-data.ts` → `data/recipes.json` |
-| 4 | Implement `lib/matcher.ts` + unit test in browser console | `lib/matcher.ts` |
-| 5 | Build `lib/pantry.ts` localStorage helpers | `lib/pantry.ts` |
-| 6 | Build `PantryInput` component (add/remove tags) | `components/PantryInput.tsx` |
-| 7 | Wire `page.tsx` — input → matches rendered as raw cards | `app/page.tsx` |
+| #   | Task                                                      | File(s)                                       |
+| --- | --------------------------------------------------------- | --------------------------------------------- |
+| 1   | Scaffold Next.js 14 project with TypeScript               | `npx create-next-app@latest`                  |
+| 2   | Define all TypeScript interfaces                          | `lib/types.ts`                                |
+| 3   | Download Kaggle CSV, run conversion script                | `scripts/build-data.ts` → `data/recipes.json` |
+| 4   | Implement `lib/matcher.ts` + unit test in browser console | `lib/matcher.ts`                              |
+| 5   | Build `lib/pantry.ts` localStorage helpers                | `lib/pantry.ts`                               |
+| 6   | Build `PantryInput` component (add/remove tags)           | `components/PantryInput.tsx`                  |
+| 7   | Wire `page.tsx` — input → matches rendered as raw cards   | `app/page.tsx`                                |
 
 ### Day 2 — AI Integration + Polish
 
-| # | Task | File(s) |
-|---|------|---------|
-| 8 | Build `lib/prompt.ts` and test prompt in Claude.ai | `lib/prompt.ts` |
-| 9 | Implement `/api/recipe` route with error handling | `app/api/recipe/route.ts` |
-| 10 | Enrich `RecipeCard` with AI response (loading state) | `components/RecipeCard.tsx` |
-| 11 | Add `MatchBadge` with match % and missing items | `components/MatchBadge.tsx` |
-| 12 | Basic Tailwind styling — mobile-first, clean cards | all components |
-| 13 | Deploy to Vercel, set env var, smoke test | Vercel dashboard |
-| 14 | Buffer: fix edge cases, improve prompt if needed | — |
+| #   | Task                                                 | File(s)                     |
+| --- | ---------------------------------------------------- | --------------------------- |
+| 8   | Build `lib/prompt.ts` and test prompt in Claude.ai   | `lib/prompt.ts`             |
+| 9   | Implement `/api/recipe` route with error handling    | `app/api/recipe/route.ts`   |
+| 10  | Enrich `RecipeCard` with AI response (loading state) | `components/RecipeCard.tsx` |
+| 11  | Add `MatchBadge` with match % and missing items      | `components/MatchBadge.tsx` |
+| 12  | Basic Tailwind styling — mobile-first, clean cards   | all components              |
+| 13  | Deploy to Vercel, set env var, smoke test            | Vercel dashboard            |
+| 14  | Buffer: fix edge cases, improve prompt if needed     | —                           |
 
 ---
 
-*This spec is the single source of truth during the build. Update it if architecture decisions change.*
+_This spec is the single source of truth during the build. Update it if architecture decisions change._

@@ -1,5 +1,5 @@
 export const UNITS = ['g', 'kg', 'ml', 'L', 'pcs', 'cups'] as const;
-export type Unit = typeof UNITS[number];
+export type Unit = (typeof UNITS)[number];
 
 export interface PantryItem {
   id: string;
@@ -38,12 +38,12 @@ export interface RecipeResponse {
 
 /** Schema for a single AI-generated recipe */
 export interface GeneratedRecipe {
-  recipeName:                      string;
-  cookingTime:                     string;
-  whyItMatchesCraving:             string;
+  recipeName: string;
+  cookingTime: string;
+  whyItMatchesCraving: string;
   /** Keys are missing ingredient names; values are suggested substitutes */
-  substitutedIngredients:          Record<string, string>;
-  instructions:                    string[];
+  substitutedIngredients: Record<string, string>;
+  instructions: string[];
   /** Keys are pantry ingredient names; values are amounts to deduct (in pantry units) */
   exactPantryQuantitiesToSubtract: Record<string, number>;
 }
@@ -56,11 +56,11 @@ export interface GeneratedRecipeResponse {
 export interface MealConfig {
   prepTime: number;
   dietary: {
-    vegetarian:  boolean;
-    vegan:       boolean;
-    glutenFree:  boolean;
+    vegetarian: boolean;
+    vegan: boolean;
+    glutenFree: boolean;
     highProtein: boolean;
-    lowCarb:     boolean;
+    lowCarb: boolean;
   };
   craving: string;
 }

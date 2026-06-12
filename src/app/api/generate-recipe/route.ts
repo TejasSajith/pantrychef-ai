@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync }               from 'fs';
-import { join }                       from 'path';
-import Groq                           from 'groq-sdk';
-import OpenAI                         from 'openai';
-import { scoreRecipes }               from '@/utils/recipeMatcher';
-import type {
-  RecipeRow, MatchResult,
-  GeneratedRecipe, GeneratedRecipeResponse,
-} from '@/lib/types';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import Groq from 'groq-sdk';
+import OpenAI from 'openai';
+import { scoreRecipes } from '@/utils/recipeMatcher';
+import type { RecipeRow, MatchResult, GeneratedRecipe, GeneratedRecipeResponse } from '@/lib/types';
 
 /* ─────────────────────────────────────────────────────────────
    Groq client — instantiated once at module load.
@@ -22,19 +19,21 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? '' });
   if (!key) {
     console.error(
       '\n╔══════════════════════════════════════════════════════╗\n' +
-      '║  [generate-recipe]  GROQ_API_KEY is NOT set          ║\n' +
-      '║  Add it to .env.local:  GROQ_API_KEY=gsk_...         ║\n' +
-      '║  Get a free key at: https://console.groq.com/keys    ║\n' +
-      '╚══════════════════════════════════════════════════════╝\n',
+        '║  [generate-recipe]  GROQ_API_KEY is NOT set          ║\n' +
+        '║  Add it to .env.local:  GROQ_API_KEY=gsk_...         ║\n' +
+        '║  Get a free key at: https://console.groq.com/keys    ║\n' +
+        '╚══════════════════════════════════════════════════════╝\n'
     );
     return;
   }
   if (!key.startsWith('gsk_')) {
     console.warn(`\n⚠  [generate-recipe]  GROQ_API_KEY looks wrong ("${key.slice(0, 10)}...")\n`);
   } else {
-    console.log(`\n✓  [generate-recipe]  GROQ_API_KEY loaded — ${key.slice(0, 12)}... (${key.length} chars)\n`);
+    console.log(
+      `\n✓  [generate-recipe]  GROQ_API_KEY loaded — ${key.slice(0, 12)}... (${key.length} chars)\n`
+    );
   }
-}());
+})();
 
 /* ─────────────────────────────────────────────────────────────
    Dataset — read + sanitize once per cold-start.
@@ -45,10 +44,14 @@ function getRecipes(): RecipeRow[] {
   if (_recipes) return _recipes;
   const filePath = join(process.cwd(), 'public/data/cleaned_recipes.json');
   const raw = JSON.parse(readFileSync(filePath, 'utf-8')) as RecipeRow[];
-  _recipes = raw.map(r => ({
+  _recipes = raw.map((r) => ({
     ...r,
-    ingredients:  (r.ingredients  ?? []).filter((s): s is string => typeof s === 'string' && s.trim().length > 0),
-    instructions: (r.instructions ?? []).filter((s): s is string => typeof s === 'string' && s.trim().length > 0),
+    ingredients: (r.ingredients ?? []).filter(
+      (s): s is string => typeof s === 'string' && s.trim().length > 0
+    ),
+    instructions: (r.instructions ?? []).filter(
+      (s): s is string => typeof s === 'string' && s.trim().length > 0
+    ),
   }));
   return _recipes;
 }
@@ -57,29 +60,29 @@ function getRecipes(): RecipeRow[] {
    Request / response shapes
 ───────────────────────────────────────────────────────────── */
 interface PantryItemPayload {
-  name:     string;
+  name: string;
   quantity: number;
-  unit:     string;
+  unit: string;
 }
 
 interface AIConfigPayload {
-  provider?:       string;
-  apiKey?:         string;
-  groqModel?:      string;
-  openaiModel?:    string;
+  provider?: string;
+  apiKey?: string;
+  groqModel?: string;
+  openaiModel?: string;
   ollamaEndpoint?: string;
-  ollamaModel?:    string;
+  ollamaModel?: string;
 }
 
 interface RequestBody {
-  pantryItems:         PantryItemPayload[];
-  maxTime:             number;
-  craving:             string;
+  pantryItems: PantryItemPayload[];
+  maxTime: number;
+  craving: string;
   dietaryRestrictions: string[];
-  servingsCount:       number;
-  preferredCuisine:    string;
-  language?:           string;
-  aiConfig?:           AIConfigPayload;
+  servingsCount: number;
+  preferredCuisine: string;
+  language?: string;
+  aiConfig?: AIConfigPayload;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -89,7 +92,6 @@ const SYSTEM_INSTRUCTION =
   'You are a highly resource-mindful chef. ' +
   'You specialise in building delicious meals from whatever ingredients a user already owns, ' +
   'never suggesting a trip to the shops when a smart substitute exists. ' +
-
   // ── STRUCTURAL SANITY LAW ─────────────────────────────────────────────
   'CRITICAL DATA LAW — CULINARY PHYSICS: You must respect the laws of culinary physics. ' +
   'Every dish has a core structural base ingredient that defines what the dish fundamentally IS. ' +
@@ -105,7 +107,6 @@ const SYSTEM_INSTRUCTION =
   'If a dataset-matched recipe is fundamentally unmakeable because its structural base is absent from the pantry, ' +
   'SKIP that recipe entirely and choose from the other high-scoring candidates provided. ' +
   'You are given 6 candidate recipes — always use the candidates whose structural bases are present. ' +
-
   // ── SUBSTITUTION RESTRICTION ──────────────────────────────────────────
   'SUBSTITUTION LAW: You may ONLY suggest smart substitutions for accent or secondary ingredients. ' +
   'Acceptable substitutions: sour cream ↔ Greek yogurt, cheddar ↔ mozzarella, ' +
@@ -113,7 +114,6 @@ const SYSTEM_INSTRUCTION =
   'cream cheese ↔ thick yogurt, breadcrumbs ↔ crushed crackers. ' +
   'NEVER substitute a fundamental structural base. ' +
   'If the structural base is absent, skip the dish — do not attempt to replace it. ' +
-
   // ── QUANTITY AWARENESS ────────────────────────────────────────────────
   'The user provides exact quantities and units for each ingredient. ' +
   'Use these amounts to judge whether there is enough for the required number of servings. ' +
@@ -123,13 +123,11 @@ const SYSTEM_INSTRUCTION =
   '80 g–150 g vegetables per person, 0.1 L–0.2 L liquids per person. ' +
   'Multiply these per-person caps by the servingsCount parameter to get the total recipe quantity. ' +
   'Record the exact amounts used in exactPantryQuantitiesToSubtract (in the same units as the pantry). ' +
-
   // ── DIETARY MODIFIERS ─────────────────────────────────────────────────
   'When "high-protein" is required: make a protein source (meat, poultry, fish, eggs, legumes, tofu, or dairy) ' +
   'the centrepiece; include an estimated protein content per serving in whyItMatchesCraving. ' +
   'When "low-carb" is required: keep net carbohydrates below 20 g per serving; ' +
   'replace starchy ingredients with cauliflower, courgette, or extra vegetables. ' +
-
   // ── CUISINE ADAPTATION ───────────────────────────────────────────────
   'CRITICAL INSTRUCTION — CUISINE ADAPTATION: Analyze the preferredCuisine field in the user prompt. ' +
   'When it is anything other than "any", you must creatively adapt ALL 3 generated recipes to reflect ' +
@@ -151,7 +149,6 @@ const SYSTEM_INSTRUCTION =
   'black pepper, and coastal spice profiles typical of Kerala cuisine. ' +
   'You must still strictly adhere to the available pantry inventory and all portion limitations. ' +
   'Adapt the flavour profile only — do not invent ingredients that are not in the pantry. ' +
-
   // ── LOCALIZATION LAW ──────────────────────────────────────────────────
   'CRITICAL LOCALIZATION LAW: Check the "language" parameter in the user prompt. ' +
   'If language is "hi" (Hindi), you MUST translate your complete recipe output — ' +
@@ -163,7 +160,6 @@ const SYSTEM_INSTRUCTION =
   'The JSON structure and all key names (recipeName, cookingTime, etc.) must remain in English ' +
   'regardless of language — only the string VALUES of the listed fields are translated. ' +
   'cookingTime and exactPantryQuantitiesToSubtract values remain in English/numerals always. ' +
-
   // ── OUTPUT FORMAT ─────────────────────────────────────────────────────
   'You respond with ONLY a raw JSON object — no markdown fences, no prose, ' +
   'no key names other than those specified. ' +
@@ -173,26 +169,31 @@ const SYSTEM_INSTRUCTION =
    Prompt builder
 ───────────────────────────────────────────────────────────── */
 function buildPrompt(
-  pantryItems:      PantryItemPayload[],
-  maxTime:          number,
-  craving:          string,
-  dietary:          string[],
-  matches:          MatchResult[],
-  servingsCount:    number,
+  pantryItems: PantryItemPayload[],
+  maxTime: number,
+  craving: string,
+  dietary: string[],
+  matches: MatchResult[],
+  servingsCount: number,
   preferredCuisine: string,
-  language:         string,
+  language: string
 ): string {
   const dietaryLine = dietary.length ? dietary.join(', ') : 'none';
   const cravingLine = craving || 'a satisfying, well-rounded meal';
 
   const DIETARY_GUIDANCE: Record<string, string> = {
-    'high-protein': '💪 HIGH-PROTEIN — protein source must be the centrepiece. Note approx. protein/serving in whyItMatchesCraving.',
-    'low-carb':     '🥩 LOW-CARB — keep net carbs < 20 g/serving. Replace pasta/rice/bread with vegetable alternatives.',
-    'vegan':        '🌱 VEGAN — no meat, fish, dairy, or eggs.',
-    'vegetarian':   '🥗 VEGETARIAN — no meat or fish.',
-    'gluten-free':  '🌾 GLUTEN-FREE — no wheat, barley, or rye.',
+    'high-protein':
+      '💪 HIGH-PROTEIN — protein source must be the centrepiece. Note approx. protein/serving in whyItMatchesCraving.',
+    'low-carb':
+      '🥩 LOW-CARB — keep net carbs < 20 g/serving. Replace pasta/rice/bread with vegetable alternatives.',
+    vegan: '🌱 VEGAN — no meat, fish, dairy, or eggs.',
+    vegetarian: '🥗 VEGETARIAN — no meat or fish.',
+    'gluten-free': '🌾 GLUTEN-FREE — no wheat, barley, or rye.',
   };
-  const specialGuidance = dietary.map(d => DIETARY_GUIDANCE[d]).filter(Boolean).join('\n');
+  const specialGuidance = dietary
+    .map((d) => DIETARY_GUIDANCE[d])
+    .filter(Boolean)
+    .join('\n');
 
   const pantryLines = pantryItems
     .map(({ name, quantity, unit }) => {
@@ -203,13 +204,31 @@ function buildPrompt(
 
   // Known structural base ingredient tokens — used to annotate candidates with warnings.
   const STRUCTURAL_BASES = [
-    'egg', 'eggs', 'rice', 'pasta', 'noodle', 'noodles', 'flour', 'bread',
-    'chicken', 'beef', 'pork', 'lamb', 'fish', 'salmon', 'tuna', 'shrimp',
-    'tofu', 'lentil', 'lentils', 'chickpea', 'chickpeas',
+    'egg',
+    'eggs',
+    'rice',
+    'pasta',
+    'noodle',
+    'noodles',
+    'flour',
+    'bread',
+    'chicken',
+    'beef',
+    'pork',
+    'lamb',
+    'fish',
+    'salmon',
+    'tuna',
+    'shrimp',
+    'tofu',
+    'lentil',
+    'lentils',
+    'chickpea',
+    'chickpeas',
   ];
 
   // Build a lowercase set of pantry ingredient names for fast structural-base lookup
-  const pantryNameSet = new Set(pantryItems.map(p => p.name.toLowerCase()));
+  const pantryNameSet = new Set(pantryItems.map((p) => p.name.toLowerCase()));
 
   function detectMissingBases(missingItems: string[]): string[] {
     const absent: string[] = [];
@@ -225,25 +244,27 @@ function buildPrompt(
     return absent;
   }
 
-  const matchBlocks = matches.map((m, i) => {
-    const have    = m.matchedItems.length ? m.matchedItems.join(', ') : 'none';
-    // Pass ALL missing items — no truncation so AI can see every absent ingredient
-    const missing = m.missingItems.length ? m.missingItems.join(', ') : 'none';
-    const absentBases = detectMissingBases(m.missingItems);
-    const warning = absentBases.length
-      ? `  ⚠ STRUCTURAL BASE MISSING (SKIP THIS DISH): ${absentBases.join(', ')}\n`
-      : '';
-    return (
-      `#${i + 1} — ${m.recipe.recipe_name} (${m.recipe.cooking_time} min)\n` +
-      warning +
-      `  Have    : ${have}\n` +
-      `  Missing : ${missing}`
-    );
-  }).join('\n\n');
+  const matchBlocks = matches
+    .map((m, i) => {
+      const have = m.matchedItems.length ? m.matchedItems.join(', ') : 'none';
+      // Pass ALL missing items — no truncation so AI can see every absent ingredient
+      const missing = m.missingItems.length ? m.missingItems.join(', ') : 'none';
+      const absentBases = detectMissingBases(m.missingItems);
+      const warning = absentBases.length
+        ? `  ⚠ STRUCTURAL BASE MISSING (SKIP THIS DISH): ${absentBases.join(', ')}\n`
+        : '';
+      return (
+        `#${i + 1} — ${m.recipe.recipe_name} (${m.recipe.cooking_time} min)\n` +
+        warning +
+        `  Have    : ${have}\n` +
+        `  Missing : ${missing}`
+      );
+    })
+    .join('\n\n');
 
   // Per-person portion caps scaled to the number of diners
   const proteinCap = servingsCount * 200;
-  const grainCap   = servingsCount * 100;
+  const grainCap = servingsCount * 100;
 
   // Exact pantry inventory as a JSON array — prevents any truncation in the prompt
   const pantryJson = JSON.stringify(
@@ -274,16 +295,20 @@ ${specialGuidance ? `\n### Mandatory dietary rules\n${specialGuidance}` : ''}
 "${cravingLine}"
 
 ## Preferred Cuisine
-${preferredCuisine === 'any'
-  ? 'Any — no specific regional style required.'
-  : `${preferredCuisine.toUpperCase()} — adapt ALL 3 recipes to reflect this cuisine's flavor profile (spices, aromatics, cooking style). Pantry inventory boundaries still apply.`}
+${
+  preferredCuisine === 'any'
+    ? 'Any — no specific regional style required.'
+    : `${preferredCuisine.toUpperCase()} — adapt ALL 3 recipes to reflect this cuisine's flavor profile (spices, aromatics, cooking style). Pantry inventory boundaries still apply.`
+}
 
 ## Language
-${language === 'hi'
-  ? 'hi — Hindi. MANDATORY: Translate recipeName, whyItMatchesCraving, substitutedIngredients keys/values, and all instructions into Hindi (Devanagari script). JSON keys and cookingTime stay in English.'
-  : language === 'ml'
-  ? 'ml — Malayalam. MANDATORY: Translate recipeName, whyItMatchesCraving, substitutedIngredients keys/values, and all instructions into Malayalam (Malayalam script). JSON keys and cookingTime stay in English.'
-  : 'en — English. Respond in English as normal.'}
+${
+  language === 'hi'
+    ? 'hi — Hindi. MANDATORY: Translate recipeName, whyItMatchesCraving, substitutedIngredients keys/values, and all instructions into Hindi (Devanagari script). JSON keys and cookingTime stay in English.'
+    : language === 'ml'
+      ? 'ml — Malayalam. MANDATORY: Translate recipeName, whyItMatchesCraving, substitutedIngredients keys/values, and all instructions into Malayalam (Malayalam script). JSON keys and cookingTime stay in English.'
+      : 'en — English. Respond in English as normal.'
+}
 
 ## 6 Dataset Candidates (ranked by pantry overlap — choose 3 whose structural bases are present)
 Any candidate marked "⚠ STRUCTURAL BASE MISSING" must be SKIPPED — do not suggest it.
@@ -318,23 +343,23 @@ Field rules:
    Structural fallback — returns the full 3-recipe response shape.
 ───────────────────────────────────────────────────────────── */
 const COMMON_SUBS: Record<string, string> = {
-  'sour cream':    'Greek yogurt',
-  'buttermilk':    'milk + 1 tsp lemon juice',
-  'heavy cream':   'evaporated milk',
-  'fresh basil':   'dried basil (⅓ the quantity)',
+  'sour cream': 'Greek yogurt',
+  buttermilk: 'milk + 1 tsp lemon juice',
+  'heavy cream': 'evaporated milk',
+  'fresh basil': 'dried basil (⅓ the quantity)',
   'fresh parsley': 'dried parsley (⅓ the quantity)',
-  'white wine':    'chicken broth + 1 tsp white wine vinegar',
-  'red wine':      'beef broth + 1 tsp balsamic vinegar',
-  'cream cheese':  'thick Greek yogurt',
-  'parmesan':      'any hard aged cheese',
-  'breadcrumbs':   'crushed crackers or rolled oats',
+  'white wine': 'chicken broth + 1 tsp white wine vinegar',
+  'red wine': 'beef broth + 1 tsp balsamic vinegar',
+  'cream cheese': 'thick Greek yogurt',
+  parmesan: 'any hard aged cheese',
+  breadcrumbs: 'crushed crackers or rolled oats',
 };
 
 const GENERIC_FALLBACKS: GeneratedRecipe[] = [
   {
-    recipeName:             'Quick Pantry Bowl',
-    cookingTime:            '20 minutes',
-    whyItMatchesCraving:    'A flexible, adaptable dish built entirely from what you have on hand.',
+    recipeName: 'Quick Pantry Bowl',
+    cookingTime: '20 minutes',
+    whyItMatchesCraving: 'A flexible, adaptable dish built entirely from what you have on hand.',
     substitutedIngredients: {},
     instructions: [
       'Bring a pot of salted water to the boil for any grain or pasta you have.',
@@ -347,9 +372,10 @@ const GENERIC_FALLBACKS: GeneratedRecipe[] = [
     exactPantryQuantitiesToSubtract: {},
   },
   {
-    recipeName:             'Simple Stir-Fry',
-    cookingTime:            '15 minutes',
-    whyItMatchesCraving:    'A quick, high-heat dish that works with almost any combination of ingredients.',
+    recipeName: 'Simple Stir-Fry',
+    cookingTime: '15 minutes',
+    whyItMatchesCraving:
+      'A quick, high-heat dish that works with almost any combination of ingredients.',
     substitutedIngredients: {},
     instructions: [
       'Heat a wok or large pan over high heat with a thin film of oil.',
@@ -361,9 +387,9 @@ const GENERIC_FALLBACKS: GeneratedRecipe[] = [
     exactPantryQuantitiesToSubtract: {},
   },
   {
-    recipeName:             'One-Pan Bake',
-    cookingTime:            '35 minutes',
-    whyItMatchesCraving:    'A hands-off oven dish that lets flavours meld while you relax.',
+    recipeName: 'One-Pan Bake',
+    cookingTime: '35 minutes',
+    whyItMatchesCraving: 'A hands-off oven dish that lets flavours meld while you relax.',
     substitutedIngredients: {},
     instructions: [
       'Preheat oven to 200 °C / 400 °F.',
@@ -379,10 +405,10 @@ const GENERIC_FALLBACKS: GeneratedRecipe[] = [
 function buildFallback(
   matches: MatchResult[],
   maxTime: number,
-  craving: string,
+  craving: string
 ): GeneratedRecipeResponse {
   // Use up to 6 candidates; take first 3 for fallback output
-  const recipes: GeneratedRecipe[] = [0, 1, 2].map(i => {
+  const recipes: GeneratedRecipe[] = [0, 1, 2].map((i) => {
     const match = matches[i];
     if (!match) {
       return { ...GENERIC_FALLBACKS[i], cookingTime: `${maxTime} minutes` };
@@ -390,17 +416,17 @@ function buildFallback(
 
     const subs: Record<string, string> = {};
     for (const item of match.missingItems.slice(0, 5)) {
-      const k = Object.keys(COMMON_SUBS).find(key => item.includes(key));
+      const k = Object.keys(COMMON_SUBS).find((key) => item.includes(key));
       subs[item] = k ? COMMON_SUBS[k] : 'nearest available equivalent';
     }
 
     const prefix = ['Classic', 'Hearty', 'Light'][i];
     return {
-      recipeName:           `${prefix} ${match.recipe.recipe_name}`,
-      cookingTime:          `${Math.min(match.recipe.cooking_time, maxTime)} minutes`,
-      whyItMatchesCraving:  `Closest match to "${craving || 'your craving'}". Uses ${match.matchCount} of your pantry ingredients.`,
+      recipeName: `${prefix} ${match.recipe.recipe_name}`,
+      cookingTime: `${Math.min(match.recipe.cooking_time, maxTime)} minutes`,
+      whyItMatchesCraving: `Closest match to "${craving || 'your craving'}". Uses ${match.matchCount} of your pantry ingredients.`,
       substitutedIngredients: subs,
-      instructions: match.recipe.instructions.slice(0, 6).map(step => {
+      instructions: match.recipe.instructions.slice(0, 6).map((step) => {
         const s = typeof step === 'string' ? step : '';
         return `${s.charAt(0).toUpperCase()}${s.slice(1)}${s.endsWith('.') ? '' : '.'}`;
       }),
@@ -419,18 +445,21 @@ function isValidRecipeItem(obj: unknown): obj is GeneratedRecipe {
   const r = obj as Record<string, unknown>;
 
   if (
-    typeof r.recipeName             !== 'string' || r.recipeName.length === 0  ||
-    typeof r.cookingTime            !== 'string' || r.cookingTime.length === 0 ||
-    typeof r.whyItMatchesCraving    !== 'string'                               ||
-    r.substitutedIngredients         === null                                  ||
-    typeof r.substitutedIngredients !== 'object'                               ||
-    Array.isArray(r.substitutedIngredients)                                    ||
+    typeof r.recipeName !== 'string' ||
+    r.recipeName.length === 0 ||
+    typeof r.cookingTime !== 'string' ||
+    r.cookingTime.length === 0 ||
+    typeof r.whyItMatchesCraving !== 'string' ||
+    r.substitutedIngredients === null ||
+    typeof r.substitutedIngredients !== 'object' ||
+    Array.isArray(r.substitutedIngredients) ||
     !Array.isArray(r.instructions)
-  ) return false;
+  )
+    return false;
 
   // Strip bare step-number elements the model sometimes emits
   r.instructions = (r.instructions as unknown[]).filter(
-    (s): s is string => typeof s === 'string' && s.trim().length > 0,
+    (s): s is string => typeof s === 'string' && s.trim().length > 0
   );
 
   if ((r.instructions as string[]).length < 2) return false;
@@ -467,40 +496,40 @@ function cleanJson(text: string): string {
 type ChatMessage = { role: 'system' | 'user'; content: string };
 
 async function callAI(
-  messages:  ChatMessage[],
-  cfg:       AIConfigPayload,
-  signal:    AbortSignal,
+  messages: ChatMessage[],
+  cfg: AIConfigPayload,
+  signal: AbortSignal
 ): Promise<string> {
   const provider = cfg.provider ?? 'server';
 
   /* ── Groq BYOK ───────────────────────────────── */
   if (provider === 'groq' && cfg.apiKey) {
-    const client     = new Groq({ apiKey: cfg.apiKey });
+    const client = new Groq({ apiKey: cfg.apiKey });
     const completion = await client.chat.completions.create(
       {
-        model:           cfg.groqModel ?? 'llama-3.3-70b-versatile',
+        model: cfg.groqModel ?? 'llama-3.3-70b-versatile',
         messages,
         response_format: { type: 'json_object' },
-        max_tokens:      2500,
-        temperature:     0.6,
+        max_tokens: 2500,
+        temperature: 0.6,
       },
-      { signal },
+      { signal }
     );
     return completion.choices[0]?.message?.content ?? '';
   }
 
   /* ── OpenAI BYOK ─────────────────────────────── */
   if (provider === 'openai' && cfg.apiKey) {
-    const client     = new OpenAI({ apiKey: cfg.apiKey });
+    const client = new OpenAI({ apiKey: cfg.apiKey });
     const completion = await client.chat.completions.create(
       {
-        model:           cfg.openaiModel ?? 'gpt-4o-mini',
+        model: cfg.openaiModel ?? 'gpt-4o-mini',
         messages,
         response_format: { type: 'json_object' },
-        max_tokens:      2500,
-        temperature:     0.6,
+        max_tokens: 2500,
+        temperature: 0.6,
       },
-      { signal },
+      { signal }
     );
     return completion.choices[0]?.message?.content ?? '';
   }
@@ -508,15 +537,15 @@ async function callAI(
   /* ── Ollama (local inference) ────────────────── */
   if (provider === 'ollama') {
     const endpoint = (cfg.ollamaEndpoint ?? 'http://localhost:11434').replace(/\/$/, '');
-    const client   = new OpenAI({ apiKey: 'ollama', baseURL: `${endpoint}/v1` });
+    const client = new OpenAI({ apiKey: 'ollama', baseURL: `${endpoint}/v1` });
     const completion = await client.chat.completions.create(
       {
-        model:       cfg.ollamaModel ?? 'llama3.2',
+        model: cfg.ollamaModel ?? 'llama3.2',
         messages,
-        max_tokens:  2500,
+        max_tokens: 2500,
         temperature: 0.6,
       },
-      { signal },
+      { signal }
     );
     return completion.choices[0]?.message?.content ?? '';
   }
@@ -524,13 +553,13 @@ async function callAI(
   /* ── Default: server-side Groq key ──────────── */
   const completion = await groq.chat.completions.create(
     {
-      model:           'llama-3.3-70b-versatile',
+      model: 'llama-3.3-70b-versatile',
       messages,
       response_format: { type: 'json_object' },
-      max_tokens:      2500,
-      temperature:     0.6,
+      max_tokens: 2500,
+      temperature: 0.6,
     },
-    { signal },
+    { signal }
   );
   return completion.choices[0]?.message?.content ?? '';
 }
@@ -543,31 +572,42 @@ export async function GET(): Promise<NextResponse> {
 
   if (!key) {
     return NextResponse.json(
-      { status: 'error', stage: 'env', message: 'GROQ_API_KEY is not set.',
-        hint: 'Add GROQ_API_KEY=gsk_... to .env.local and restart.' },
-      { status: 500 },
+      {
+        status: 'error',
+        stage: 'env',
+        message: 'GROQ_API_KEY is not set.',
+        hint: 'Add GROQ_API_KEY=gsk_... to .env.local and restart.',
+      },
+      { status: 500 }
     );
   }
   if (!key.startsWith('gsk_')) {
     return NextResponse.json(
-      { status: 'error', stage: 'env',
-        message: `GROQ_API_KEY format looks wrong (starts with "${key.slice(0, 10)}...").` },
-      { status: 500 },
+      {
+        status: 'error',
+        stage: 'env',
+        message: `GROQ_API_KEY format looks wrong (starts with "${key.slice(0, 10)}...").`,
+      },
+      { status: 500 }
     );
   }
 
   const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 6_000);
+  const timeoutId = setTimeout(() => controller.abort(), 6_000);
   try {
     const probe = await groq.chat.completions.create(
-      { model: 'llama-3.3-70b-versatile',
+      {
+        model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: 'Reply with exactly one word: connected' }],
-        max_tokens: 5, temperature: 0 },
-      { signal: controller.signal },
+        max_tokens: 5,
+        temperature: 0,
+      },
+      { signal: controller.signal }
     );
     clearTimeout(timeoutId);
     return NextResponse.json({
-      status: 'ok', message: 'Groq API is reachable.',
+      status: 'ok',
+      message: 'Groq API is reachable.',
       model: 'llama-3.3-70b-versatile',
       keyPrefix: key.slice(0, 12) + '...',
       probeReply: probe.choices[0]?.message?.content?.trim() ?? '(empty)',
@@ -578,13 +618,16 @@ export async function GET(): Promise<NextResponse> {
     if (err instanceof Groq.APIError) {
       return NextResponse.json(
         { status: 'error', stage: 'api_call', httpStatus: err.status, apiMessage: err.message },
-        { status: 502 },
+        { status: 502 }
       );
     }
     return NextResponse.json(
-      { status: 'error', stage: 'network',
-        message: (err instanceof Error && err.name === 'AbortError') ? 'Timed out.' : String(err) },
-      { status: 502 },
+      {
+        status: 'error',
+        stage: 'network',
+        message: err instanceof Error && err.name === 'AbortError' ? 'Timed out.' : String(err),
+      },
+      { status: 502 }
     );
   }
 }
@@ -593,7 +636,6 @@ export async function GET(): Promise<NextResponse> {
    POST /api/generate-recipe
 ───────────────────────────────────────────────────────────── */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-
   /* ── 1. Parse & validate body ──────────────────────────── */
   let body: Partial<RequestBody>;
   try {
@@ -604,94 +646,109 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const rawItems = Array.isArray(body.pantryItems) ? body.pantryItems : [];
   const pantryItems: PantryItemPayload[] = rawItems
-    .filter((x): x is PantryItemPayload =>
-      x !== null && typeof x === 'object' &&
-      typeof (x as PantryItemPayload).name === 'string' &&
-      (x as PantryItemPayload).name.trim().length > 0,
+    .filter(
+      (x): x is PantryItemPayload =>
+        x !== null &&
+        typeof x === 'object' &&
+        typeof (x as PantryItemPayload).name === 'string' &&
+        (x as PantryItemPayload).name.trim().length > 0
     )
-    .map(x => ({
-      name:     x.name.trim().toLowerCase(),
+    .map((x) => ({
+      name: x.name.trim().toLowerCase(),
       quantity: typeof x.quantity === 'number' && x.quantity > 0 ? x.quantity : 1,
-      unit:     typeof x.unit === 'string' && x.unit.length > 0 ? x.unit : 'pcs',
+      unit: typeof x.unit === 'string' && x.unit.length > 0 ? x.unit : 'pcs',
     }));
 
   if (pantryItems.length === 0) {
     return NextResponse.json(
       { error: 'pantryItems must be a non-empty array of { name, quantity, unit } objects.' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
-  const maxTime      = typeof body.maxTime      === 'number' && body.maxTime > 0      ? body.maxTime      : 60;
-  const craving      = typeof body.craving      === 'string'                           ? body.craving.trim().slice(0, 300) : '';
-  const servingsCount = typeof body.servingsCount === 'number' && body.servingsCount >= 1
-    ? Math.round(body.servingsCount) : 1;
+  const maxTime = typeof body.maxTime === 'number' && body.maxTime > 0 ? body.maxTime : 60;
+  const craving = typeof body.craving === 'string' ? body.craving.trim().slice(0, 300) : '';
+  const servingsCount =
+    typeof body.servingsCount === 'number' && body.servingsCount >= 1
+      ? Math.round(body.servingsCount)
+      : 1;
   const dietaryRestrictions = Array.isArray(body.dietaryRestrictions)
     ? (body.dietaryRestrictions as unknown[]).filter((x): x is string => typeof x === 'string')
     : [];
 
-  const preferredCuisine = typeof body.preferredCuisine === 'string' && body.preferredCuisine.trim().length > 0
-    ? body.preferredCuisine.trim().toLowerCase()
-    : 'any';
+  const preferredCuisine =
+    typeof body.preferredCuisine === 'string' && body.preferredCuisine.trim().length > 0
+      ? body.preferredCuisine.trim().toLowerCase()
+      : 'any';
 
-  const language = typeof body.language === 'string' && ['en', 'hi', 'ml'].includes(body.language)
-    ? body.language
-    : 'en';
+  const language =
+    typeof body.language === 'string' && ['en', 'hi', 'ml'].includes(body.language)
+      ? body.language
+      : 'en';
 
   const aiCfg: AIConfigPayload =
     body.aiConfig && typeof body.aiConfig === 'object' ? body.aiConfig : {};
 
-  const pantryIngredients = pantryItems.map(i => i.name);
+  const pantryIngredients = pantryItems.map((i) => i.name);
 
   /* ── 2. Local matcher — top 6 candidates (AI picks best 3) ── */
   let topMatches: MatchResult[];
   try {
     const recipes = getRecipes();
-    topMatches    = scoreRecipes(pantryIngredients, recipes, 6);
+    topMatches = scoreRecipes(pantryIngredients, recipes, 6);
   } catch (err) {
     console.error('[generate-recipe] matcher failed:', err);
     return NextResponse.json({ error: 'Internal recipe matcher error.' }, { status: 500 });
   }
 
   /* ── 3. Guard: no AI available → structural fallback ──────────── */
-  const usingServer  = !aiCfg.provider || aiCfg.provider === 'server';
-  const usingBYOK    = (aiCfg.provider === 'groq' || aiCfg.provider === 'openai') && !!aiCfg.apiKey;
-  const usingOllama  = aiCfg.provider === 'ollama';
+  const usingServer = !aiCfg.provider || aiCfg.provider === 'server';
+  const usingBYOK = (aiCfg.provider === 'groq' || aiCfg.provider === 'openai') && !!aiCfg.apiKey;
+  const usingOllama = aiCfg.provider === 'ollama';
   const hasServerKey = !!process.env.GROQ_API_KEY;
 
   if (usingServer && !hasServerKey) {
-    console.warn('[generate-recipe] No GROQ_API_KEY and no user AI config — returning structural fallback');
+    console.warn(
+      '[generate-recipe] No GROQ_API_KEY and no user AI config — returning structural fallback'
+    );
     return NextResponse.json(buildFallback(topMatches, maxTime, craving));
   }
 
   /* ── 4. Build prompt ────────────────────────────────────── */
   const userPrompt = buildPrompt(
-    pantryItems, maxTime, craving, dietaryRestrictions, topMatches, servingsCount, preferredCuisine, language,
+    pantryItems,
+    maxTime,
+    craving,
+    dietaryRestrictions,
+    topMatches,
+    servingsCount,
+    preferredCuisine,
+    language
   );
 
   const messages: Array<{ role: 'system' | 'user'; content: string }> = [
     { role: 'system', content: SYSTEM_INSTRUCTION },
-    { role: 'user',   content: userPrompt },
+    { role: 'user', content: userPrompt },
   ];
 
   /* ── 5. Call AI provider with 20-second timeout ─────────── */
   const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 20_000);
+  const timeoutId = setTimeout(() => controller.abort(), 20_000);
 
   let rawText = '';
   try {
-    const providerLabel =
-      usingBYOK   ? `${aiCfg.provider?.toUpperCase()} BYOK`
-      : usingOllama ? `Ollama (${aiCfg.ollamaModel ?? 'llama3.2'})`
-      : 'Groq (server)';
+    const providerLabel = usingBYOK
+      ? `${aiCfg.provider?.toUpperCase()} BYOK`
+      : usingOllama
+        ? `Ollama (${aiCfg.ollamaModel ?? 'llama3.2'})`
+        : 'Groq (server)';
     console.log(`[generate-recipe] using provider: ${providerLabel}`);
 
     rawText = await callAI(messages, aiCfg, controller.signal);
     clearTimeout(timeoutId);
-
   } catch (err) {
     clearTimeout(timeoutId);
-    const isTimeout  = err instanceof Error && err.name === 'AbortError';
+    const isTimeout = err instanceof Error && err.name === 'AbortError';
     const isAPIError = err && typeof err === 'object' && 'status' in err && 'message' in err;
     if (isAPIError) {
       const e = err as { status: number; message: string };

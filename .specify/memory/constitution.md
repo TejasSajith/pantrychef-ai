@@ -1,6 +1,7 @@
 # PantryChef AI — Spec-Kit Constitution
 
 ## Purpose
+
 This constitution defines the norms, constraints, and principles that govern all feature specifications in this repository. Every spec under `specs/` must conform to these rules.
 
 ## Core Principles
@@ -26,6 +27,7 @@ draft → review → accepted → implemented → deprecated
 ## Required Sections (see templates/)
 
 Every feature spec must contain, in order:
+
 1. Title and status badge
 2. Summary (≤ 3 sentences)
 3. Problem statement
@@ -42,10 +44,10 @@ Example: `specs/pantry-ingredient-matching.md`
 
 ## Ownership
 
-| Role | Responsibility |
-|---|---|
-| Author | Writes and maintains the spec |
-| Reviewer | Approves acceptance criteria |
+| Role        | Responsibility                 |
+| ----------- | ------------------------------ |
+| Author      | Writes and maintains the spec  |
+| Reviewer    | Approves acceptance criteria   |
 | Implementer | Links PRs/MRs back to the spec |
 
 ## Enforcement

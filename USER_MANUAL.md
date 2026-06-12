@@ -28,12 +28,12 @@ Your pantry is saved automatically in your browser — no account needed.
 
 ### 3. Configure your meal
 
-| Setting | Options |
-|---|---|
-| **Servings** | 1 – 10 people |
-| **Dietary filters** | Vegetarian, Vegan, Gluten-free, High-protein, Low-carb |
-| **Cuisine** | Any, Indian, Italian, Mexican, East Asian, Mediterranean |
-| **Max prep time** | 15 min, 30 min, 45 min, 60 min+ |
+| Setting             | Options                                                  |
+| ------------------- | -------------------------------------------------------- |
+| **Servings**        | 1 – 10 people                                            |
+| **Dietary filters** | Vegetarian, Vegan, Gluten-free, High-protein, Low-carb   |
+| **Cuisine**         | Any, Indian, Italian, Mexican, East Asian, Mediterranean |
+| **Max prep time**   | 15 min, 30 min, 45 min, 60 min+                          |
 
 ### 4. Generate recipes
 
@@ -46,6 +46,7 @@ Click **Find Recipes**. The app will:
 ### 5. Review a recipe card
 
 Each card shows:
+
 - **Recipe name and description**
 - **Ingredients** — with a tick for what you have and a swap suggestion for what you don't
 - **Pantry impact preview** — exactly which items will be deducted and by how much
@@ -61,11 +62,11 @@ Click **I Cooked This!** on any recipe card to deduct the exact ingredient amoun
 
 Click the **AI Settings** panel to switch between:
 
-| Provider | Requirements |
-|---|---|
+| Provider           | Requirements                                                             |
+| ------------------ | ------------------------------------------------------------------------ |
 | **Groq** (default) | Free Groq API key from [console.groq.com](https://console.groq.com/keys) |
-| **OpenAI** | OpenAI API key |
-| **Ollama** | Ollama running locally on port 11434 |
+| **OpenAI**         | OpenAI API key                                                           |
+| **Ollama**         | Ollama running locally on port 11434                                     |
 
 Enter your API key in the field provided — it is stored only in your browser and never sent to our servers.
 
@@ -79,11 +80,11 @@ Use the language selector in the top bar to switch between **English**, **Hindi*
 
 ## Managing your pantry
 
-| Action | How |
-|---|---|
-| Edit quantity | Click the quantity field on any pantry item |
-| Remove item | Click the × button next to the item |
-| Clear pantry | Click **Clear all** at the bottom of the pantry panel |
+| Action        | How                                                   |
+| ------------- | ----------------------------------------------------- |
+| Edit quantity | Click the quantity field on any pantry item           |
+| Remove item   | Click the × button next to the item                   |
+| Clear pantry  | Click **Clear all** at the bottom of the pantry panel |
 
 ---
 

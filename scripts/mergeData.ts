@@ -17,17 +17,17 @@
  */
 
 import { createReadStream, writeFileSync } from 'fs';
-import { join }                            from 'path';
-import Papa                                from 'papaparse';
+import { join } from 'path';
+import Papa from 'papaparse';
 
 /* ── Config ────────────────────────────────────────────────── */
-const INPUT      = join(process.cwd(), 'public/data/RAW_recipes.csv');
-const OUTPUT     = join(process.cwd(), 'public/data/cleaned_recipes.json');
-const TARGET     = 8_000;   // hard cap on output rows
-const MIN_MINS   = 5;        // skip instant/no-cook entries
-const MAX_MINS   = 180;      // skip multi-day marinades etc.
-const MIN_INGR   = 3;        // skip trivial single-ingredient rows
-const MIN_STEPS  = 2;        // skip recipes with no real instructions
+const INPUT = join(process.cwd(), 'public/data/RAW_recipes.csv');
+const OUTPUT = join(process.cwd(), 'public/data/cleaned_recipes.json');
+const TARGET = 8_000; // hard cap on output rows
+const MIN_MINS = 5; // skip instant/no-cook entries
+const MAX_MINS = 180; // skip multi-day marinades etc.
+const MIN_INGR = 3; // skip trivial single-ingredient rows
+const MIN_STEPS = 2; // skip recipes with no real instructions
 
 /* ── Types ─────────────────────────────────────────────────── */
 interface RawRow {
@@ -67,11 +67,11 @@ function parsePythonList(raw: string): string[] {
 
   while ((m = re.exec(raw)) !== null) {
     const val = (m[1] ?? m[2])
-      .replace(/\\'/g,  "'")
-      .replace(/\\"/g,  '"')
-      .replace(/\\n/g,  ' ')
-      .replace(/\\t/g,  ' ')
-      .replace(/\s+/g,  ' ')
+      .replace(/\\'/g, "'")
+      .replace(/\\"/g, '"')
+      .replace(/\\n/g, ' ')
+      .replace(/\\t/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
 
     if (val) results.push(val);
@@ -84,30 +84,32 @@ function parsePythonList(raw: string): string[] {
 function isQuality(row: RawRow, ingredients: string[], instructions: string[]): boolean {
   const mins = parseInt(row.minutes, 10);
   if (isNaN(mins) || mins < MIN_MINS || mins > MAX_MINS) return false;
-  if (!row.name?.trim())                                  return false;
-  if (ingredients.length  < MIN_INGR)                    return false;
-  if (instructions.length < MIN_STEPS)                   return false;
+  if (!row.name?.trim()) return false;
+  if (ingredients.length < MIN_INGR) return false;
+  if (instructions.length < MIN_STEPS) return false;
   return true;
 }
 
 /* ── Main ───────────────────────────────────────────────────── */
 const collected: CleanedRecipe[] = [];
-let rowsScanned  = 0;
-let rowsSkipped  = 0;
+let rowsScanned = 0;
+let rowsSkipped = 0;
 
 console.log('');
 console.log('PantryChef AI — Dataset Builder');
 console.log('─────────────────────────────────────────────');
 console.log(`  Source : ${INPUT}`);
 console.log(`  Target : ${TARGET} quality recipes`);
-console.log(`  Filter : ${MIN_MINS}–${MAX_MINS} min, ≥${MIN_INGR} ingredients, ≥${MIN_STEPS} steps`);
+console.log(
+  `  Filter : ${MIN_MINS}–${MAX_MINS} min, ≥${MIN_INGR} ingredients, ≥${MIN_STEPS} steps`
+);
 console.log('─────────────────────────────────────────────\n');
 
-const t0     = Date.now();
+const t0 = Date.now();
 const stream = createReadStream(INPUT, { encoding: 'utf-8' });
 
 Papa.parse<RawRow>(stream, {
-  header:         true,
+  header: true,
   skipEmptyLines: true,
 
   step(result, parser) {
@@ -120,7 +122,7 @@ Papa.parse<RawRow>(stream, {
     rowsScanned++;
     const row = result.data;
 
-    const ingredients  = parsePythonList(row.ingredients);
+    const ingredients = parsePythonList(row.ingredients);
     const instructions = parsePythonList(row.steps);
 
     if (!isQuality(row, ingredients, instructions)) {
@@ -129,8 +131,8 @@ Papa.parse<RawRow>(stream, {
     }
 
     collected.push({
-      id:           row.id,
-      recipe_name:  row.name.trim(),
+      id: row.id,
+      recipe_name: row.name.trim(),
       ingredients,
       instructions,
       cooking_time: parseInt(row.minutes, 10),
@@ -146,8 +148,8 @@ Papa.parse<RawRow>(stream, {
 
   complete() {
     const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
-    const json    = JSON.stringify(collected, null, 2);
-    const sizeKB  = Math.round(Buffer.byteLength(json, 'utf-8') / 1024);
+    const json = JSON.stringify(collected, null, 2);
+    const sizeKB = Math.round(Buffer.byteLength(json, 'utf-8') / 1024);
 
     writeFileSync(OUTPUT, json, 'utf-8');
 

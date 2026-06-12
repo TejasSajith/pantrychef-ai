@@ -16,10 +16,24 @@ dependency-audit:
     - npm audit --audit-level=high
   allow_failure: false
 
-lint:
+eslint:
   stage: lint
   script:
     - npm run lint
+
+prettier:
+  stage: lint
+  script:
+    - npm run format:check
+
+typecheck:
+  stage: lint
+  script:
+    - npm run typecheck
+
+knip:
+  stage: lint
+  script:
     - npm run knip
 
 test-coverage:

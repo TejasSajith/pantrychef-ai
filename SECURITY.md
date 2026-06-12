@@ -3,8 +3,8 @@
 ## Supported versions
 
 | Version | Supported |
-|---|---|
-| 0.1.x | Yes |
+| ------- | --------- |
+| 0.1.x   | Yes       |
 
 ## Reporting a vulnerability
 
@@ -22,11 +22,13 @@ You will receive an acknowledgement within 48 hours and a resolution timeline wi
 ## Scope
 
 In scope:
+
 - API key exposure or leakage via the serverless function
 - XSS via recipe content rendered in the UI
 - Dependency vulnerabilities with a CVSS score of 7.0 or above
 
 Out of scope:
+
 - Vulnerabilities in Vercel infrastructure
 - Groq or OpenAI API security issues (report those to the respective vendors)
 - Denial-of-service against the free-tier Vercel function

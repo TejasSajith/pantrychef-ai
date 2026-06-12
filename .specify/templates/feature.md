@@ -3,7 +3,7 @@
 **Status:** draft | review | accepted | implemented | deprecated  
 **Author:** @username  
 **Created:** YYYY-MM-DD  
-**Last updated:** YYYY-MM-DD  
+**Last updated:** YYYY-MM-DD
 
 ---
 
@@ -30,7 +30,7 @@
 
 <!-- Explicitly list what this spec does NOT cover to prevent scope creep. -->
 
-- 
+-
 
 ## Open Questions
 
@@ -44,4 +44,4 @@
 <!-- Links to related specs, issues, designs, or research. -->
 
 - Related spec: `specs/`
-- MR/PR: 
+- MR/PR:

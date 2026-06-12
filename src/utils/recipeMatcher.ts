@@ -39,14 +39,29 @@ async function loadRecipes(): Promise<RecipeRow[]> {
 /* ── Token normalization ───────────────────────────────────── */
 
 const STOP_WORDS = new Set([
-  'and', 'or', 'the', 'with', 'for', 'of', 'in', 'a', 'an',
-  'to', 'at', 'by', 'on', 'up', 'as', 'it', 'its',
+  'and',
+  'or',
+  'the',
+  'with',
+  'for',
+  'of',
+  'in',
+  'a',
+  'an',
+  'to',
+  'at',
+  'by',
+  'on',
+  'up',
+  'as',
+  'it',
+  'its',
 ]);
 
 function normalize(s: string): string {
   return s
     .toLowerCase()
-    .replace(/[^a-z ]/g, '')   // strip digits, punctuation
+    .replace(/[^a-z ]/g, '') // strip digits, punctuation
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -61,15 +76,15 @@ function expandToken(word: string): string[] {
   if (word.length <= 3) return forms;
 
   if (word.endsWith('ies') && word.length > 4) {
-    forms.push(word.slice(0, -3) + 'y');        // berries → berry
+    forms.push(word.slice(0, -3) + 'y'); // berries → berry
   } else if (word.endsWith('oes') && word.length > 4) {
-    forms.push(word.slice(0, -2));               // tomatoes → tomato
-    forms.push(word.slice(0, -3));               // tomatoes → tomat (fallback)
+    forms.push(word.slice(0, -2)); // tomatoes → tomato
+    forms.push(word.slice(0, -3)); // tomatoes → tomat (fallback)
   } else if (word.endsWith('es') && word.length > 4) {
-    forms.push(word.slice(0, -2));               // olives → oliv ... also catches potatoes → potato
-    forms.push(word.slice(0, -1));               // olives → olive ✓ (most useful)
+    forms.push(word.slice(0, -2)); // olives → oliv ... also catches potatoes → potato
+    forms.push(word.slice(0, -1)); // olives → olive ✓ (most useful)
   } else if (word.endsWith('s') && word.length > 3) {
-    forms.push(word.slice(0, -1));               // eggs → egg, cloves → clove
+    forms.push(word.slice(0, -1)); // eggs → egg, cloves → clove
   }
 
   return forms;
@@ -83,7 +98,7 @@ function expandToken(word: string): string[] {
 function buildTokenSet(phrase: string): Set<string> {
   const tokens = normalize(phrase)
     .split(' ')
-    .filter(t => t.length >= 3 && !STOP_WORDS.has(t));
+    .filter((t) => t.length >= 3 && !STOP_WORDS.has(t));
 
   const out = new Set<string>();
   for (const token of tokens) {
@@ -103,10 +118,7 @@ function buildTokenSet(phrase: string): Set<string> {
  * Both sets are pre-expanded with plural variants, so the check is
  * symmetric: "egg" matches "eggs" and "eggs" matches "egg".
  */
-function ingredientMatches(
-  pantryTokenSet: Set<string>,
-  recipeIngredient: string
-): boolean {
+function ingredientMatches(pantryTokenSet: Set<string>, recipeIngredient: string): boolean {
   const recipeTokens = buildTokenSet(recipeIngredient);
   for (const token of pantryTokenSet) {
     if (recipeTokens.has(token)) return true;
@@ -134,9 +146,7 @@ export function scoreRecipes(
     const missingItems: string[] = [];
 
     for (const ingredient of recipe.ingredients) {
-      const hit = pantryTokenSets.some(({ tokens }) =>
-        ingredientMatches(tokens, ingredient)
-      );
+      const hit = pantryTokenSets.some(({ tokens }) => ingredientMatches(tokens, ingredient));
       if (hit) {
         matchedItems.push(ingredient);
       } else {
@@ -145,10 +155,7 @@ export function scoreRecipes(
     }
 
     const matchCount = matchedItems.length;
-    const matchRatio =
-      recipe.ingredients.length > 0
-        ? matchCount / recipe.ingredients.length
-        : 0;
+    const matchRatio = recipe.ingredients.length > 0 ? matchCount / recipe.ingredients.length : 0;
 
     return {
       recipe,
@@ -161,9 +168,7 @@ export function scoreRecipes(
 
   // Spec §4: primary sort matchCount DESC, secondary missingItems.length ASC
   scored.sort(
-    (a, b) =>
-      b.matchCount - a.matchCount ||
-      a.missingItems.length - b.missingItems.length
+    (a, b) => b.matchCount - a.matchCount || a.missingItems.length - b.missingItems.length
   );
 
   return scored.slice(0, topN);
@@ -186,7 +191,7 @@ export async function findTopMatches(
   const names =
     typeof pantry[0] === 'string'
       ? (pantry as string[])
-      : (pantry as PantryItem[]).map(i => i.name);
+      : (pantry as PantryItem[]).map((i) => i.name);
   const recipes = await loadRecipes();
   return scoreRecipes(names, recipes, topN);
 }
@@ -205,13 +210,12 @@ export async function debugMatches(pantryNames: string[] | PantryItem[]): Promis
   results.forEach((r, i) => {
     console.log(
       `#${i + 1}  ${r.recipe.recipe_name}  ` +
-      `(${r.matchCount}/${r.recipe.ingredients.length} matched, ` +
-      `${r.missingItems.length} missing, ` +
-      `${Math.round(r.matchRatio * 100)}%)`
+        `(${r.matchCount}/${r.recipe.ingredients.length} matched, ` +
+        `${r.missingItems.length} missing, ` +
+        `${Math.round(r.matchRatio * 100)}%)`
     );
     console.log(`     ✓ matched : ${r.matchedItems.join(', ')}`);
-    if (r.missingItems.length)
-      console.log(`     ✗ missing : ${r.missingItems.join(', ')}`);
+    if (r.missingItems.length) console.log(`     ✗ missing : ${r.missingItems.join(', ')}`);
   });
   console.groupEnd();
 }
