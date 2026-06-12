@@ -78,7 +78,7 @@ const LANG_LABELS: Record<Language, string> = {
 };
 
 export default function Home() {
-  const [pantry, setPantryState] = useState<PantryItem[]>([]);
+  const [pantry, setPantryState] = useState<PantryItem[]>(() => getPantry());
   const [input, setInput] = useState('');
   const [inputQty, setInputQty] = useState(1);
   const [inputUnit, setInputUnit] = useState<(typeof UNITS)[number]>('pcs');
@@ -104,8 +104,6 @@ export default function Home() {
   const [showAISettings, setShowAISettings] = useState(false);
 
   useEffect(() => {
-    setPantryState(getPantry());
-    setAIConfig(loadAIConfig());
     setMounted(true);
   }, []);
 
